@@ -34,13 +34,13 @@
         <p class="upload-zone__hint" data-i18n="send.up.h"></p>
         <input type="file" accept=".pdf,application/pdf" id="fileInput">
       </div>
-      <div id="fileInfo" class="card mt-16" style="display:none">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-8">
-            <span id="fIcon" style="color:var(--ac)"></span>
-            <div><div id="fName" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw"></div><div id="fSize" class="text-muted" style="font-size:.8rem"></div></div>
+      <div id="fileInfo" class="card mt-16" style="display:none;overflow:hidden">
+        <div class="flex items-center justify-between" style="min-width:0;gap:12px">
+          <div class="flex items-center gap-8" style="min-width:0;overflow:hidden">
+            <span id="fIcon" style="color:var(--ac);flex-shrink:0"></span>
+            <div style="min-width:0;overflow:hidden"><div id="fName" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><div id="fSize" class="text-muted" style="font-size:.8rem"></div></div>
           </div>
-          <button class="btn btn--ghost btn--sm" id="rmFile"></button>
+          <button class="btn btn--ghost btn--sm" id="rmFile" style="flex-shrink:0"></button>
         </div>
       </div>
       <div class="flex mt-24" style="justify-content:flex-end">

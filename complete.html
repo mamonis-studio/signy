@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signy — 署名完了</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header"><div class="header__inner">
+    <a href="/" class="header__logo" id="logo"></a>
+    <nav class="header__nav"><button class="lang-toggle">EN</button></nav>
+  </div></header>
+
+  <main><section class="complete"><div class="container container--narrow">
+    <div class="complete__icon" id="cIcon"></div>
+    <h1 class="complete__title" data-i18n="comp.title"></h1>
+    <p class="complete__desc" data-i18n="comp.desc"></p>
+    <div class="complete__actions">
+      <a href="#" class="btn btn--primary" id="dlBtn"></a>
+      <a href="/" class="btn btn--secondary" data-i18n="comp.back"></a>
+    </div>
+  </div></section></main>
+
+  <footer class="footer"><p class="footer__text" data-i18n="footer"></p></footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const {I, Logo} = Signy;
+    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
+    document.getElementById('cIcon').innerHTML = I.checkCircle;
+    document.getElementById('dlBtn').innerHTML = `${I.download}<span data-i18n="comp.dl"></span>`;
+    Signy.applyI18n();
+    const p = new URLSearchParams(location.search);
+    const id = p.get('id'), tk = p.get('token');
+    if (id && tk) document.getElementById('dlBtn').href = `/api/documents/${id}/download?token=${tk}`;
+  });
+  </script>
+</body>
+</html>

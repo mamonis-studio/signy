@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signy — 署名依頼を送信</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+</head>
+<body>
+  <header class="header"><div class="header__inner">
+    <a href="/" class="header__logo" id="logo"></a>
+    <nav class="header__nav">
+      <a href="/" class="header__link" data-i18n="nav.dashboard"></a>
+      <button class="lang-toggle">EN</button>
+    </nav>
+  </div></header>
+
+  <main><section class="send-flow"><div class="container container--narrow">
+    <h1 class="mb-24" data-i18n="send.title"></h1>
+
+    <div class="steps" id="stepsNav">
+      <div class="step step--active" data-step="1" data-i18n="send.s1"></div>
+      <div class="step" data-step="2" data-i18n="send.s2"></div>
+      <div class="step" data-step="3" data-i18n="send.s3"></div>
+    </div>
+
+    <!-- Step 1: Upload -->
+    <div class="sc" id="step1">
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-zone__icon" id="upIcon"></div>
+        <p class="upload-zone__text" data-i18n="send.up"></p>
+        <p class="upload-zone__hint" data-i18n="send.up.h"></p>
+        <input type="file" accept=".pdf,application/pdf" id="fileInput">
+      </div>
+      <div id="fileInfo" class="card mt-16" style="display:none">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-8">
+            <span id="fIcon" style="color:var(--ac)"></span>
+            <div><div id="fName" style="font-weight:600"></div><div id="fSize" class="text-muted" style="font-size:.8rem"></div></div>
+          </div>
+          <button class="btn btn--ghost btn--sm" id="rmFile"></button>
+        </div>
+      </div>
+      <div class="flex mt-24" style="justify-content:flex-end">
+        <button class="btn btn--primary" id="toS2" disabled data-i18n="send.next"></button>
+      </div>
+    </div>
+
+    <!-- Step 2: Place fields -->
+    <div class="sc" id="step2" style="display:none">
+      <div class="pdf-editor">
+        <div class="pdf-editor__toolbar">
+          <div class="pdf-editor__toolbar-group">
+            <button class="btn btn--primary btn--sm" id="addField"></button>
+          </div>
+          <div class="pdf-editor__toolbar-group">
+            <button class="btn btn--ghost btn--sm" id="prevP" disabled></button>
+            <span class="mono" style="font-size:.8rem;color:var(--tx2)" id="pageInd"></span>
+            <button class="btn btn--ghost btn--sm" id="nextP" disabled></button>
+          </div>
+        </div>
+        <div class="pdf-editor__canvas-wrap" id="cWrap"><canvas id="pdfC"></canvas></div>
+      </div>
+      <div class="flex mt-24" style="justify-content:space-between">
+        <button class="btn btn--secondary" id="backS1" data-i18n="send.back"></button>
+        <button class="btn btn--primary" id="toS3" disabled data-i18n="send.next"></button>
+      </div>
+    </div>
+
+    <!-- Step 3: Details & Send -->
+    <div class="sc" id="step3" style="display:none">
+      <div class="card">
+        <h3 class="mb-24" data-i18n="send.det"></h3>
+        <div class="flex flex-col gap-16">
+          <div class="form-group">
+            <label class="form-label" data-i18n="send.doc"></label>
+            <input type="text" class="form-input" id="docTitle" data-i18n-attr="placeholder:send.doc.ph">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="send.email"></label>
+            <input type="email" class="form-input" id="signerEmail" data-i18n-attr="placeholder:send.email.ph">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="send.msg"></label>
+            <textarea class="form-textarea" id="signerMsg" rows="3" data-i18n-attr="placeholder:send.msg.ph"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="flex mt-24" style="justify-content:space-between">
+        <button class="btn btn--secondary" id="backS2" data-i18n="send.back"></button>
+        <button class="btn btn--primary" id="sendBtn"></button>
+      </div>
+    </div>
+  </div></section></main>
+
+  <footer class="footer"><p class="footer__text" data-i18n="footer"></p></footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const {I, Logo, t, applyI18n, api, toast, fmtSize, genId, CONFIG} = Signy;
+    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
+    document.getElementById('upIcon').innerHTML = I.upload;
+    document.getElementById('rmFile').innerHTML = I.x;
+    document.getElementById('addField').innerHTML = `${I.plus}<span data-i18n="send.add"></span>`;
+    document.getElementById('prevP').innerHTML = I.chevL;
+    document.getElementById('nextP').innerHTML = I.chevR;
+    document.getElementById('sendBtn').innerHTML = `${I.send}<span data-i18n="send.submit"></span>`;
+    applyI18n();
+
+    let pdfFile=null, pdfDoc=null, curPage=1, totalPages=0, fields=[], scale=1.5;
+    const canvas=document.getElementById('pdfC'), ctx=canvas.getContext('2d'), wrap=document.getElementById('cWrap');
+
+    function goStep(n){
+      document.querySelectorAll('.sc').forEach(e=>e.style.display='none');
+      document.getElementById(`step${n}`).style.display='block';
+      document.querySelectorAll('.step').forEach(e=>{
+        const s=+e.dataset.step; e.classList.remove('step--active','step--done');
+        if(s===n)e.classList.add('step--active'); else if(s<n)e.classList.add('step--done');
+      });
+      applyI18n();
+    }
+
+    // Upload
+    const zone=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
+    zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('upload-zone--active')});
+    zone.addEventListener('dragleave',()=>zone.classList.remove('upload-zone--active'));
+    zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('upload-zone--active');if(e.dataTransfer.files.length)handle(e.dataTransfer.files[0])});
+    fi.addEventListener('change',()=>{if(fi.files.length)handle(fi.files[0])});
+
+    function handle(f){
+      if(f.type!=='application/pdf'){toast('PDFファイルを選択してください','error');return}
+      if(f.size>CONFIG.FREE_SIZE){toast(`${fmtSize(CONFIG.FREE_SIZE)}以下のファイルを選択してください`,'error');return}
+      pdfFile=f;
+      document.getElementById('fileInfo').style.display='block';
+      document.getElementById('fIcon').innerHTML=I.fileText;
+      document.getElementById('fName').textContent=f.name;
+      document.getElementById('fSize').textContent=fmtSize(f.size);
+      document.getElementById('toS2').disabled=false;
+      zone.style.display='none';
+      document.getElementById('docTitle').value=f.name.replace(/\.pdf$/i,'');
+    }
+
+    document.getElementById('rmFile').addEventListener('click',()=>{
+      pdfFile=null;pdfDoc=null;
+      document.getElementById('fileInfo').style.display='none';
+      document.getElementById('toS2').disabled=true;
+      zone.style.display='block';fi.value='';
+    });
+
+    document.getElementById('toS2').addEventListener('click',async()=>{if(!pdfFile)return;goStep(2);await loadPdf()});
+    document.getElementById('backS1').addEventListener('click',()=>goStep(1));
+    document.getElementById('toS3').addEventListener('click',()=>{
+      if(!fields.length){toast('署名欄を配置してください','error');return}
+      goStep(3);
+    });
+    document.getElementById('backS2').addEventListener('click',()=>goStep(2));
+
+    async function loadPdf(){
+      const ab=await pdfFile.arrayBuffer();
+      pdfDoc=await pdfjsLib.getDocument({data:ab}).promise;
+      totalPages=pdfDoc.numPages;curPage=1;
+      await renderPage(curPage);updateNav();
+    }
+
+    async function renderPage(n){
+      const page=await pdfDoc.getPage(n), vp=page.getViewport({scale});
+      canvas.width=vp.width;canvas.height=vp.height;
+      await page.render({canvasContext:ctx,viewport:vp}).promise;
+      document.querySelectorAll('.sign-field').forEach(e=>e.style.display=+e.dataset.page===curPage?'flex':'none');
+    }
+
+    function updateNav(){
+      document.getElementById('pageInd').textContent=`${t('send.page')} ${curPage} / ${totalPages}`;
+      document.getElementById('prevP').disabled=curPage<=1;
+      document.getElementById('nextP').disabled=curPage>=totalPages;
+    }
+
+    document.getElementById('prevP').addEventListener('click',async()=>{if(curPage>1){curPage--;await renderPage(curPage);updateNav()}});
+    document.getElementById('nextP').addEventListener('click',async()=>{if(curPage<totalPages){curPage++;await renderPage(curPage);updateNav()}});
+
+    // Add field
+    document.getElementById('addField').addEventListener('click',()=>{
+      const id=genId('sf'), f={id,page:curPage,x:50,y:50,w:200,h:60};
+      fields.push(f);createField(f);document.getElementById('toS3').disabled=false;
+    });
+
+    function createField(f){
+      const el=document.createElement('div');
+      el.className='sign-field';el.id=`f-${f.id}`;
+      el.style.cssText=`left:${f.x}px;top:${f.y}px;width:${f.w}px;height:${f.h}px`;
+      el.dataset.page=f.page;
+      el.innerHTML=`<span class="sign-field__label">${I.pen} ${t('send.field')}</span><button class="sign-field__remove">${I.x}</button>`;
+
+      el.querySelector('.sign-field__remove').addEventListener('click',e=>{
+        e.stopPropagation();fields=fields.filter(x=>x.id!==f.id);el.remove();
+        if(!fields.length)document.getElementById('toS3').disabled=true;
+      });
+
+      // Drag
+      let drag=false,sx,sy,ox,oy;
+      const start=e=>{if(e.target.closest('.sign-field__remove'))return;e.preventDefault();drag=true;
+        const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=parseInt(el.style.left);oy=parseInt(el.style.top);
+        document.addEventListener('mousemove',move);document.addEventListener('mouseup',stop);
+        document.addEventListener('touchmove',move,{passive:false});document.addEventListener('touchend',stop);
+      };
+      const move=e=>{if(!drag)return;e.preventDefault();const p=e.touches?e.touches[0]:e;
+        const nx=Math.max(0,Math.min(canvas.width-f.w,ox+(p.clientX-sx)));
+        const ny=Math.max(0,Math.min(canvas.height-f.h,oy+(p.clientY-sy)));
+        el.style.left=nx+'px';el.style.top=ny+'px';f.x=nx;f.y=ny;
+      };
+      const stop=()=>{drag=false;document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',stop);
+        document.removeEventListener('touchmove',move);document.removeEventListener('touchend',stop);
+      };
+      el.addEventListener('mousedown',start);el.addEventListener('touchstart',start,{passive:false});
+      wrap.appendChild(el);
+    }
+
+    // Send
+    document.getElementById('sendBtn').addEventListener('click',async()=>{
+      const email=document.getElementById('signerEmail').value.trim();
+      const title=document.getElementById('docTitle').value.trim();
+      const msg=document.getElementById('signerMsg').value.trim();
+      if(!email||!email.includes('@')){toast('有効なメールアドレスを入力してください','error');return}
+      if(!title){toast('ドキュメント名を入力してください','error');return}
+
+      const btn=document.getElementById('sendBtn');btn.disabled=true;
+      btn.querySelector('span').textContent=t('send.sending');
+
+      try{
+        const fd=new FormData();fd.append('pdf',pdfFile);fd.append('title',title);
+        fd.append('signerEmail',email);fd.append('message',msg);
+        fd.append('signFields',JSON.stringify(fields.map(f=>({page:f.page,x:Math.round(f.x/scale),y:Math.round(f.y/scale),width:Math.round(f.w/scale),height:Math.round(f.h/scale)}))));
+        const res=await api('/documents/upload',{method:'POST',body:fd,headers:{}});
+        await api('/documents/send',{method:'POST',body:JSON.stringify({documentId:res.id})});
+        toast('署名依頼を送信しました','success');
+        setTimeout(()=>location.href='/',1500);
+      }catch(e){
+        toast(e.message||t('err'),'error');btn.disabled=false;
+        btn.querySelector('span').textContent=t('send.submit');
+      }
+    });
+  });
+  </script>
+</body>
+</html>

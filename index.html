@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signy — 電子サインを、もっとシンプルに。</title>
+  <meta name="description" content="フリーランス・中小企業向け電子サインサービス。無料プランで月3件まで。">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header"><div class="header__inner">
+    <a href="/" class="header__logo" id="logo"></a>
+    <nav class="header__nav">
+      <a href="/pricing.html" class="header__link" data-i18n="nav.pricing"></a>
+      <a href="/send.html" class="header__link" data-auth="dash" data-i18n="nav.send"></a>
+      <a href="/login.html" class="header__link" data-auth="login" data-i18n="nav.login"></a>
+      <a href="#" class="header__link" data-auth="logout" id="logoutBtn" data-i18n="nav.logout"></a>
+      <button class="lang-toggle">EN</button>
+    </nav>
+  </div></header>
+
+  <main>
+    <!-- ═══ Landing ═══ -->
+    <div id="landing">
+      <section class="hero"><div class="container">
+        <h1 class="hero__title" data-i18n="hero.title"></h1>
+        <p class="hero__subtitle" data-i18n="hero.sub"></p>
+        <div class="hero__actions">
+          <a href="/login.html" class="btn btn--primary btn--lg" data-i18n="hero.cta"></a>
+          <a href="/pricing.html" class="btn btn--secondary btn--lg" data-i18n="hero.cta2"></a>
+        </div>
+      </div></section>
+
+      <section class="features"><div class="container">
+        <h2 class="text-center mb-48" data-i18n="feat.title"></h2>
+        <div class="features__grid" id="featureGrid"></div>
+      </div></section>
+    </div>
+
+    <!-- ═══ Dashboard ═══ -->
+    <div id="dashboard" style="display:none">
+      <section class="dashboard"><div class="container">
+        <div class="dashboard__header">
+          <div>
+            <h1 class="dashboard__title" data-i18n="dash.title"></h1>
+            <p class="text-muted mt-8" id="usageText"></p>
+          </div>
+          <a href="/send.html" class="btn btn--primary" id="newBtn"></a>
+        </div>
+        <div class="doc-list" id="docList"></div>
+        <div class="empty-state" id="emptyState" style="display:none">
+          <div class="empty-state__icon" id="emptyIcon"></div>
+          <h3 class="empty-state__title" data-i18n="dash.empty"></h3>
+          <p class="empty-state__desc" data-i18n="dash.empty.d"></p>
+          <a href="/send.html" class="btn btn--primary" data-i18n="dash.empty.cta"></a>
+        </div>
+        <div class="text-center mt-48" id="loading"><div class="loader loader--lg" style="margin:0 auto"></div></div>
+      </div></section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer__text" data-i18n="footer"></p>
+    <div class="footer__links">
+      <a href="#" data-i18n="footer.priv"></a>
+      <a href="#" data-i18n="footer.terms"></a>
+    </div>
+  </footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const {I, Logo, esc, fmtDate, isLoggedIn, clearToken, api, toast, t} = Signy;
+    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
+    document.getElementById('newBtn').innerHTML = `${I.plus}<span data-i18n="dash.new"></span>`;
+    document.getElementById('emptyIcon').innerHTML = I.fileText;
+
+    // Features
+    const feats = [
+      {icon: I.shield, t:'feat.priv', d:'feat.priv.d'},
+      {icon: I.zap,    t:'feat.easy', d:'feat.easy.d'},
+      {icon: I.lock,   t:'feat.legal',d:'feat.legal.d'},
+      {icon: I.dollar, t:'feat.cheap',d:'feat.cheap.d'},
+    ];
+    const grid = document.getElementById('featureGrid');
+    feats.forEach(f => {
+      grid.insertAdjacentHTML('beforeend', `
+        <div class="card feature-card">
+          <div class="feature-card__icon">${f.icon}</div>
+          <h3 class="feature-card__title" data-i18n="${f.t}"></h3>
+          <p class="feature-card__desc" data-i18n="${f.d}"></p>
+        </div>`);
+    });
+    Signy.applyI18n();
+
+    if (isLoggedIn()) {
+      document.getElementById('landing').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadDashboard();
+      // Checkout success toast
+      const params = new URLSearchParams(location.search);
+      if (params.get('checkout') === 'success') {
+        toast('プランのアップグレードが完了しました！', 'success');
+        history.replaceState(null, '', '/');
+      }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', e => {
+      e.preventDefault(); clearToken(); location.reload();
+    });
+
+    async function loadDashboard() {
+      try {
+        const data = await api('/documents');
+        document.getElementById('loading').style.display = 'none';
+        if (!data.documents?.length) { document.getElementById('emptyState').style.display = 'block'; return; }
+        if (data.usage) document.getElementById('usageText').textContent = `${t('dash.usage')}: ${data.usage.count} / ${data.usage.limit}`;
+        const list = document.getElementById('docList');
+        data.documents.forEach(doc => {
+          const cls = doc.status === 'signed' ? 'signed' : doc.status === 'expired' ? 'expired' : 'pending';
+          list.insertAdjacentHTML('beforeend', `
+            <div class="doc-item">
+              <div class="doc-item__title">${esc(doc.title)}</div>
+              <div class="doc-item__signer">${esc(doc.signerEmail)}</div>
+              <span class="badge badge--${cls}">${t('st.'+doc.status)}</span>
+              <div class="doc-item__date">${fmtDate(doc.createdAt)}</div>
+            </div>`);
+        });
+      } catch {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+      }
+    }
+  });
+  </script>
+</body>
+</html>

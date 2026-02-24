@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signy — 署名のお願い</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+</head>
+<body>
+  <header class="header"><div class="header__inner">
+    <a href="/" class="header__logo" id="logo"></a>
+    <nav class="header__nav"><button class="lang-toggle">EN</button></nav>
+  </div></header>
+
+  <main>
+    <div class="text-center" style="padding:100px 24px" id="signLoading">
+      <div class="loader loader--lg" style="margin:0 auto 16px"></div>
+      <p class="text-muted">Loading...</p>
+    </div>
+
+    <div class="complete" id="signExpired" style="display:none">
+      <div class="complete__icon" id="expIcon" style="color:var(--danger)"></div>
+      <h1 class="complete__title" data-i18n="sign.expired"></h1>
+    </div>
+
+    <div class="complete" id="signDone" style="display:none">
+      <div class="complete__icon" id="doneIcon" style="color:var(--ac)"></div>
+      <h1 class="complete__title" data-i18n="sign.done"></h1>
+    </div>
+
+    <section class="sign-flow" id="signFlow" style="display:none"><div class="container container--narrow">
+      <h1 class="mb-16" data-i18n="sign.title"></h1>
+
+      <div class="sign-info">
+        <span class="sign-info__icon" id="siIcon"></span>
+        <span class="sign-info__text" data-i18n="sign.info"></span>
+      </div>
+
+      <div class="card mt-16 mb-24">
+        <div class="flex flex-col gap-8">
+          <div class="flex items-center gap-8">
+            <span class="text-muted mono" style="font-size:.8rem" data-i18n="sign.document"></span>
+            <span id="dTitle" style="font-weight:600"></span>
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="text-muted mono" style="font-size:.8rem" data-i18n="sign.from"></span>
+            <span id="dSender" class="text-muted"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pdf-editor mb-24">
+        <div class="pdf-editor__toolbar">
+          <div class="pdf-editor__toolbar-group">
+            <span class="mono" style="font-size:.8rem;color:var(--tx2)" id="sPageInd"></span>
+          </div>
+          <div class="pdf-editor__toolbar-group">
+            <button class="btn btn--ghost btn--sm" id="sPrev" disabled></button>
+            <button class="btn btn--ghost btn--sm" id="sNext" disabled></button>
+          </div>
+        </div>
+        <div class="pdf-editor__canvas-wrap" id="sCWrap"><canvas id="sPdfC"></canvas></div>
+      </div>
+
+      <div class="sig-pad mb-24">
+        <div class="sig-pad__header">
+          <h3 style="font-size:1rem">Signature</h3>
+          <div class="sig-pad__tabs">
+            <button class="sig-pad__tab sig-pad__tab--active" data-mode="draw" data-i18n="sign.draw"></button>
+            <button class="sig-pad__tab" data-mode="type" data-i18n="sign.type"></button>
+          </div>
+        </div>
+        <div id="drawMode">
+          <div class="sig-pad__canvas-wrap"><canvas id="sigC" width="600" height="150"></canvas></div>
+          <div class="flex mt-8" style="justify-content:flex-end">
+            <button class="btn btn--ghost btn--sm" id="clearSig" data-i18n="sign.clear"></button>
+          </div>
+        </div>
+        <div id="typeMode" style="display:none">
+          <input type="text" class="sig-pad__type-input" id="sigTI" data-i18n-attr="placeholder:sign.type.ph">
+        </div>
+      </div>
+
+      <label class="card flex items-center gap-16 mb-24" style="cursor:pointer;padding:16px 20px">
+        <input type="checkbox" id="agree" style="width:18px;height:18px;accent-color:var(--ac)">
+        <span style="font-size:.875rem;color:var(--tx2)" data-i18n="sign.agree"></span>
+      </label>
+
+      <button class="btn btn--primary btn--lg btn--block" id="signBtn" disabled></button>
+    </div></section>
+  </main>
+
+  <footer class="footer"><p class="footer__text" data-i18n="footer"></p></footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const {I, Logo, t, applyI18n, api, toast} = Signy;
+    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
+    document.getElementById('siIcon').innerHTML = I.info;
+    document.getElementById('sPrev').innerHTML = I.chevL;
+    document.getElementById('sNext').innerHTML = I.chevR;
+    document.getElementById('signBtn').innerHTML = `${I.pen}<span data-i18n="sign.submit"></span>`;
+    document.getElementById('expIcon').innerHTML = I.alertCircle;
+    document.getElementById('doneIcon').innerHTML = I.checkCircle;
+    applyI18n();
+
+    let docData=null, pdfDoc=null, curPage=1, totalPages=0, scale=1.5, mode='draw', drawn=false;
+    const canvas=document.getElementById('sPdfC'), ctx=canvas.getContext('2d');
+    const sigC=document.getElementById('sigC'), sigCtx=sigC.getContext('2d');
+    sigCtx.strokeStyle='#111';sigCtx.lineWidth=2.5;sigCtx.lineCap='round';sigCtx.lineJoin='round';
+
+    const params=new URLSearchParams(location.search);
+    const docId=params.get('id'), token=params.get('token');
+    if(!docId||!token){show('signExpired');return}
+    load();
+
+    function show(id){document.getElementById('signLoading').style.display='none';document.getElementById(id).style.display='block';}
+
+    async function load(){
+      try{
+        const r=await fetch(`/api/documents/${docId}?token=${token}`);
+        const d=await r.json();
+        if(d.error){show(d.error==='expired'?'signExpired':d.error==='already_signed'?'signDone':'signExpired');return}
+        docData=d;
+        document.getElementById('dTitle').textContent=d.title;
+        document.getElementById('dSender').textContent=d.ownerEmail||'';
+        const pdfR=await fetch(d.pdfUrl);
+        pdfDoc=await pdfjsLib.getDocument({data:await pdfR.arrayBuffer()}).promise;
+        totalPages=pdfDoc.numPages;
+        document.getElementById('signLoading').style.display='none';
+        document.getElementById('signFlow').style.display='block';
+        await renderPage(1);updateNav();renderFields();
+      }catch(e){
+        console.error(e);
+        document.getElementById('signLoading').style.display='none';
+        document.getElementById('signFlow').style.display='block';
+        document.getElementById('dTitle').textContent='Demo';
+        document.getElementById('dSender').textContent='demo@example.com';
+      }
+    }
+
+    async function renderPage(n){
+      if(!pdfDoc)return;
+      const p=await pdfDoc.getPage(n),vp=p.getViewport({scale});
+      canvas.width=vp.width;canvas.height=vp.height;
+      await p.render({canvasContext:ctx,viewport:vp}).promise;curPage=n;renderFields();
+    }
+
+    function updateNav(){
+      document.getElementById('sPageInd').textContent=`${t('send.page')} ${curPage} / ${totalPages}`;
+      document.getElementById('sPrev').disabled=curPage<=1;
+      document.getElementById('sNext').disabled=curPage>=totalPages;
+    }
+
+    document.getElementById('sPrev').addEventListener('click',async()=>{if(curPage>1){await renderPage(--curPage);updateNav()}});
+    document.getElementById('sNext').addEventListener('click',async()=>{if(curPage<totalPages){await renderPage(++curPage);updateNav()}});
+
+    function renderFields(){
+      document.querySelectorAll('.sf-overlay').forEach(e=>e.remove());
+      if(!docData?.signFields)return;
+      const w=document.getElementById('sCWrap');
+      docData.signFields.forEach(f=>{
+        if(f.page!==curPage)return;
+        const el=document.createElement('div');
+        el.className='sign-field sf-overlay';
+        el.style.cssText=`left:${f.x*scale}px;top:${f.y*scale}px;width:${f.width*scale}px;height:${f.height*scale}px;cursor:default;border-style:solid`;
+        el.innerHTML=`<span class="sign-field__label">${I.pen} ${t('send.field')}</span>`;
+        w.appendChild(el);
+      });
+    }
+
+    // Drawing
+    let drawing=false,lx,ly;
+    function pos(e){const r=sigC.getBoundingClientRect(),sx=sigC.width/r.width,sy=sigC.height/r.height,p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*sx,y:(p.clientY-r.top)*sy}}
+
+    sigC.addEventListener('mousedown',e=>{drawing=true;const p=pos(e);lx=p.x;ly=p.y});
+    sigC.addEventListener('mousemove',e=>{if(!drawing)return;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(lx,ly);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();lx=p.x;ly=p.y;drawn=true;chk()});
+    sigC.addEventListener('mouseup',()=>drawing=false);sigC.addEventListener('mouseleave',()=>drawing=false);
+    sigC.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=pos(e);lx=p.x;ly=p.y},{passive:false});
+    sigC.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(lx,ly);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();lx=p.x;ly=p.y;drawn=true;chk()},{passive:false});
+    sigC.addEventListener('touchend',()=>drawing=false);
+
+    document.getElementById('clearSig').addEventListener('click',()=>{sigCtx.clearRect(0,0,sigC.width,sigC.height);drawn=false;chk()});
+
+    const sigTI=document.getElementById('sigTI');
+    sigTI.addEventListener('input',chk);
+
+    document.querySelectorAll('.sig-pad__tab').forEach(tab=>{
+      tab.addEventListener('click',()=>{
+        document.querySelectorAll('.sig-pad__tab').forEach(t=>t.classList.remove('sig-pad__tab--active'));
+        tab.classList.add('sig-pad__tab--active');
+        mode=tab.dataset.mode;
+        document.getElementById('drawMode').style.display=mode==='draw'?'block':'none';
+        document.getElementById('typeMode').style.display=mode==='type'?'block':'none';
+        chk();
+      });
+    });
+
+    const ag=document.getElementById('agree');
+    ag.addEventListener('change',chk);
+    function chk(){
+      const has=mode==='draw'?drawn:sigTI.value.trim().length>0;
+      document.getElementById('signBtn').disabled=!(has&&ag.checked);
+    }
+
+    // Submit
+    document.getElementById('signBtn').addEventListener('click',async()=>{
+      const btn=document.getElementById('signBtn');btn.disabled=true;
+      btn.querySelector('span').textContent=t('sign.submitting');
+      try{
+        let sig;
+        if(mode==='draw'){sig=sigC.toDataURL('image/png')}
+        else{const tc=document.createElement('canvas');tc.width=400;tc.height=100;const tx=tc.getContext('2d');tx.fillStyle='#111';tx.font='48px "Dancing Script",cursive';tx.textAlign='center';tx.textBaseline='middle';tx.fillText(sigTI.value.trim(),200,50);sig=tc.toDataURL('image/png')}
+        await api(`/documents/${docId}/sign`,{method:'POST',body:JSON.stringify({token,signatureImage:sig,signatureType:mode})});
+        location.href=`/complete.html?id=${docId}&token=${token}`;
+      }catch(e){
+        toast(e.message||t('err'),'error');btn.disabled=false;
+        btn.querySelector('span').textContent=t('sign.submit');
+      }
+    });
+  });
+  </script>
+</body>
+</html>

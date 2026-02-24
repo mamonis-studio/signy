@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signy — ログイン</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header"><div class="header__inner">
+    <a href="/" class="header__logo" id="logo"></a>
+    <nav class="header__nav">
+      <a href="/pricing.html" class="header__link" data-i18n="nav.pricing"></a>
+      <button class="lang-toggle">EN</button>
+    </nav>
+  </div></header>
+
+  <main>
+    <div id="loginView">
+      <div class="auth-box card">
+        <h2 class="auth-box__title" data-i18n="auth.title"></h2>
+        <div class="flex flex-col gap-16">
+          <div class="form-group">
+            <label class="form-label" data-i18n="auth.email"></label>
+            <input type="email" class="form-input" id="em" data-i18n-attr="placeholder:auth.email.ph" autocomplete="email">
+          </div>
+          <button class="btn btn--primary btn--block" id="loginBtn"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="sentView" style="display:none">
+      <div class="auth-box card text-center">
+        <div id="sentIcon" style="width:48px;height:48px;margin:0 auto 16px;color:var(--ac)"></div>
+        <h2 class="mb-8" data-i18n="auth.title"></h2>
+        <p data-i18n="auth.sent"></p>
+      </div>
+    </div>
+
+    <div id="authView" style="display:none">
+      <div class="auth-box text-center">
+        <div class="loader loader--lg" style="margin:0 auto 16px"></div>
+        <p data-i18n="auth.checking"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer"><p class="footer__text" data-i18n="footer"></p></footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const {I, Logo, api, setToken, isLoggedIn, toast, t, applyI18n} = Signy;
+    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
+    document.getElementById('sentIcon').innerHTML = I.mail;
+    document.getElementById('loginBtn').innerHTML = `${I.mail}<span data-i18n="auth.submit"></span>`;
+    applyI18n();
+
+    if (isLoggedIn()) { location.href = '/'; return; }
+
+    const params = new URLSearchParams(location.search);
+    const authTk = params.get('token');
+    if (authTk) {
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('authView').style.display = 'block';
+      verify(authTk);
+      return;
+    }
+
+    const btn = document.getElementById('loginBtn');
+    const em = document.getElementById('em');
+
+    btn.addEventListener('click', async () => {
+      const email = em.value.trim();
+      if (!email || !email.includes('@')) { toast('有効なメールアドレスを入力してください', 'error'); return; }
+      btn.disabled = true;
+      try {
+        await api('/auth/magic-link', { method: 'POST', body: JSON.stringify({ email }) });
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('sentView').style.display = 'block';
+      } catch (e) {
+        toast(e.message || t('err'), 'error'); btn.disabled = false;
+      }
+    });
+
+    em.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+
+    async function verify(token) {
+      try {
+        const d = await api('/auth/verify', { method: 'POST', body: JSON.stringify({ token }) });
+        setToken(d.sessionToken);
+        location.href = '/';
+      } catch {
+        toast('認証に失敗しました', 'error');
+        setTimeout(() => {
+          document.getElementById('authView').style.display = 'none';
+          document.getElementById('loginView').style.display = 'block';
+        }, 1500);
+      }
+    }
+  });
+  </script>
+</body>
+</html>

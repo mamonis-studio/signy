@@ -230,7 +230,12 @@ async function docGet(docId, url, env, C, req) {
 }
 
 async function docSign(docId, req, env, C) {
-  const { token, signatureImage, signatureType } = await req.json();
+  const fd = await req.formData();
+  const token = fd.get('token');
+  const signatureImage = fd.get('signatureImage');
+  const signatureType = fd.get('signatureType');
+  const signedPdfBlob = fd.get('signedPdf');
+
   const doc = await env.SIGNY_KV.get(`doc:${docId}`, 'json');
   if (!doc) return J({ error: 'Not found' }, 404, C);
   if (token !== doc.signToken) return J({ error: 'Invalid token' }, 403, C);
@@ -240,20 +245,31 @@ async function docSign(docId, req, env, C) {
   const signedAt = new Date().toISOString();
   await env.SIGNY_KV.put(`sig:${docId}`, JSON.stringify({ image: signatureImage, type: signatureType, signedAt, ...ci(req) }));
 
-  const obj = await env.SIGNY_DOCUMENTS.get(doc.pdfKey);
-  if (!obj) return J({ error: 'PDF not found' }, 404, C);
-  const buf = await obj.arrayBuffer();
+  // 署名済みPDFをR2に保存
   const signedKey = `docs/${docId}/signed.pdf`;
-  await env.SIGNY_DOCUMENTS.put(signedKey, buf, { httpMetadata: { contentType: 'application/pdf' } });
+  if (signedPdfBlob && signedPdfBlob.size > 0) {
+    const signedBuf = await signedPdfBlob.arrayBuffer();
+    await env.SIGNY_DOCUMENTS.put(signedKey, signedBuf, { httpMetadata: { contentType: 'application/pdf' } });
+  } else {
+    // フォールバック: 署名済みPDFが無い場合は元PDFをコピー
+    const obj = await env.SIGNY_DOCUMENTS.get(doc.pdfKey);
+    if (obj) {
+      const buf = await obj.arrayBuffer();
+      await env.SIGNY_DOCUMENTS.put(signedKey, buf, { httpMetadata: { contentType: 'application/pdf' } });
+    }
+  }
 
   doc.status = 'signed'; doc.signedAt = signedAt; doc.signedPdfKey = signedKey;
   await env.SIGNY_KV.put(`doc:${docId}`, JSON.stringify(doc));
   await log(env, docId, 'signed', req);
 
+  // 監査ログ（元PDFのハッシュで記録）
+  const origObj = await env.SIGNY_DOCUMENTS.get(doc.pdfKey);
+  const origBuf = origObj ? await origObj.arrayBuffer() : new ArrayBuffer(0);
   const logD = await env.SIGNY_KV.get(`log:${docId}`, 'json');
   await env.SIGNY_KV.put(`audit:${docId}`, JSON.stringify({
     documentId: docId, title: doc.title, owner: doc.ownerEmail, signer: doc.signerEmail,
-    events: logD?.events || [], pdfHash: await sha256(buf), generatedAt: new Date().toISOString(),
+    events: logD?.events || [], pdfHash: await sha256(origBuf), generatedAt: new Date().toISOString(),
   }));
 
   const dlUrl = `${APP(env)}/api/documents/${docId}/download?token=${doc.signToken}`;

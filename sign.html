@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </head>
 <body>
   <header class="header"><div class="header__inner">
@@ -214,17 +215,64 @@
       document.getElementById('signBtn').disabled=!(has&&ag.checked);
     }
 
-    // Submit
+    // Submit — クライアント側でPDFに署名画像を埋め込んでから送信
     document.getElementById('signBtn').addEventListener('click',async()=>{
       const btn=document.getElementById('signBtn');btn.disabled=true;
       btn.querySelector('span').textContent=t('sign.submitting');
       try{
-        let sig;
-        if(mode==='draw'){sig=sigC.toDataURL('image/png')}
-        else{const tc=document.createElement('canvas');tc.width=400;tc.height=100;const tx=tc.getContext('2d');tx.fillStyle='#111';tx.font='48px "Dancing Script",cursive';tx.textAlign='center';tx.textBaseline='middle';tx.fillText(sigTI.value.trim(),200,50);sig=tc.toDataURL('image/png')}
-        await api(`/documents/${docId}/sign`,{method:'POST',body:JSON.stringify({token,signatureImage:sig,signatureType:mode})});
+        // 1. 署名画像を生成
+        let sigDataUrl;
+        if(mode==='draw'){
+          sigDataUrl=sigC.toDataURL('image/png');
+        } else {
+          const tc=document.createElement('canvas');tc.width=400;tc.height=100;
+          const tx=tc.getContext('2d');
+          tx.fillStyle='#111';tx.font='48px "Dancing Script",cursive';
+          tx.textAlign='center';tx.textBaseline='middle';
+          tx.fillText(sigTI.value.trim(),200,50);
+          sigDataUrl=tc.toDataURL('image/png');
+        }
+
+        // 2. 元PDFを取得してpdf-libで開く
+        const pdfR=await fetch(`/api/documents/${docId}/pdf?token=${token}`);
+        const pdfBytes=await pdfR.arrayBuffer();
+        const pdfLibDoc=await PDFLib.PDFDocument.load(pdfBytes);
+
+        // 3. 署名画像をPDFに埋め込む
+        const sigImgBytes=Uint8Array.from(atob(sigDataUrl.split(',')[1]),c=>c.charCodeAt(0));
+        const sigImg=await pdfLibDoc.embedPng(sigImgBytes);
+
+        // 4. 各署名欄に画像を配置
+        if(docData?.signFields){
+          for(const f of docData.signFields){
+            const page=pdfLibDoc.getPage(f.page-1);
+            const {height:pageH}=page.getSize();
+            page.drawImage(sigImg,{
+              x: f.x,
+              y: pageH - f.y - f.height,
+              width: f.width,
+              height: f.height,
+            });
+          }
+        }
+
+        // 5. 署名済みPDFを生成
+        const signedPdfBytes=await pdfLibDoc.save();
+
+        // 6. FormDataで署名済みPDFとメタデータを送信
+        const fd=new FormData();
+        fd.append('signedPdf',new Blob([signedPdfBytes],{type:'application/pdf'}),'signed.pdf');
+        fd.append('token',token);
+        fd.append('signatureImage',sigDataUrl);
+        fd.append('signatureType',mode);
+
+        const res=await fetch(`/api/documents/${docId}/sign`,{method:'POST',body:fd});
+        const result=await res.json();
+        if(result.error) throw new Error(result.error);
+
         location.href=`/complete.html?id=${docId}&token=${token}`;
       }catch(e){
+        console.error(e);
         toast(e.message||t('err'),'error');btn.disabled=false;
         btn.querySelector('span').textContent=t('sign.submit');
       }

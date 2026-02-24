@@ -176,7 +176,7 @@ async function docUpload(req, env, C) {
   if (pdf.size > max) return J({ error: `File too large (max ${max / 1e6}MB)` }, 400, C);
 
   const docId = `doc_${uid()}`, signToken = uid(), pdfKey = `docs/${docId}/original.pdf`;
-  await env.DOCUMENTS.put(pdfKey, pdf.stream(), { httpMetadata: { contentType: 'application/pdf' } });
+  await env.SIGNY_DOCUMENTS.put(pdfKey, pdf.stream(), { httpMetadata: { contentType: 'application/pdf' } });
 
   const now = new Date();
   await env.SIGNY_KV.put(`doc:${docId}`, JSON.stringify({
@@ -240,11 +240,11 @@ async function docSign(docId, req, env, C) {
   const signedAt = new Date().toISOString();
   await env.SIGNY_KV.put(`sig:${docId}`, JSON.stringify({ image: signatureImage, type: signatureType, signedAt, ...ci(req) }));
 
-  const obj = await env.DOCUMENTS.get(doc.pdfKey);
+  const obj = await env.SIGNY_DOCUMENTS.get(doc.pdfKey);
   if (!obj) return J({ error: 'PDF not found' }, 404, C);
   const buf = await obj.arrayBuffer();
   const signedKey = `docs/${docId}/signed.pdf`;
-  await env.DOCUMENTS.put(signedKey, buf, { httpMetadata: { contentType: 'application/pdf' } });
+  await env.SIGNY_DOCUMENTS.put(signedKey, buf, { httpMetadata: { contentType: 'application/pdf' } });
 
   doc.status = 'signed'; doc.signedAt = signedAt; doc.signedPdfKey = signedKey;
   await env.SIGNY_KV.put(`doc:${docId}`, JSON.stringify(doc));
@@ -278,7 +278,7 @@ async function docPdf(docId, url, env, C) {
   const token = url.searchParams.get('token');
   const doc = await env.SIGNY_KV.get(`doc:${docId}`, 'json');
   if (!doc || token !== doc.signToken) return J({ error: 'Unauthorized' }, 403, C);
-  const obj = await env.DOCUMENTS.get(doc.pdfKey);
+  const obj = await env.SIGNY_DOCUMENTS.get(doc.pdfKey);
   if (!obj) return J({ error: 'Not found' }, 404, C);
   return new Response(obj.body, { headers: { 'Content-Type': 'application/pdf', 'Cache-Control': 'private, no-store', ...C } });
 }
@@ -287,7 +287,7 @@ async function docDl(docId, url, env, C) {
   const token = url.searchParams.get('token');
   const doc = await env.SIGNY_KV.get(`doc:${docId}`, 'json');
   if (!doc || token !== doc.signToken) return J({ error: 'Unauthorized' }, 403, C);
-  const obj = await env.DOCUMENTS.get(doc.signedPdfKey || doc.pdfKey);
+  const obj = await env.SIGNY_DOCUMENTS.get(doc.signedPdfKey || doc.pdfKey);
   if (!obj) return J({ error: 'Not found' }, 404, C);
   return new Response(obj.body, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.title)}_signed.pdf"`, ...C } });
 }

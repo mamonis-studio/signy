@@ -62,7 +62,7 @@ const Signy = (() => {
       'auth.submit':'マジックリンクを送信','auth.sent':'メールを送信しました。リンクをクリックしてログインしてください。',
       'auth.checking':'認証中...',
       'err':'エラーが発生しました','ok':'成功',
-      'footer':'Signy — mamonis.studio','footer.priv':'プライバシーポリシー','footer.terms':'利用規約',
+      'footer':'Signy — mamonis.studio','footer.priv':'プライバシーポリシー','footer.terms':'利用規約','footer.law':'特定商取引法に基づく表記',
     },
     en: {
       'nav.dashboard':'Dashboard','nav.send':'New Request','nav.pricing':'Pricing',
@@ -116,7 +116,7 @@ const Signy = (() => {
       'auth.submit':'Send Magic Link','auth.sent':'Check your email for the login link.',
       'auth.checking':'Authenticating...',
       'err':'An error occurred','ok':'Success',
-      'footer':'Signy — mamonis.studio','footer.priv':'Privacy Policy','footer.terms':'Terms of Service',
+      'footer':'Signy — mamonis.studio','footer.priv':'Privacy Policy','footer.terms':'Terms of Service','footer.law':'Specified Commercial Transactions',
     }
   };
 

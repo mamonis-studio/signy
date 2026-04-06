@@ -48,7 +48,7 @@
 
     /* Signer selector */
     .signer-select { display:flex; gap:6px; margin-bottom:12px; }
-    .signer-btn { padding:6px 14px; font-size:.75rem; font-weight:600; border-radius:100px; border:1.5px solid var(--bd); background:var(--bg); cursor:pointer; font-family:inherit; transition:all .15s; }
+    .signer-btn { padding:6px 14px; font-size:.75rem; font-weight:600; border-radius:100px; border:1.5px solid var(--bd); background:var(--bg); color:var(--tx); cursor:pointer; font-family:inherit; transition:all .15s; }
     .signer-btn--active { background:var(--ac); color:#fff; border-color:var(--ac); }
     .signer-btn--self { border-color:#666; }
     .signer-btn--self.signer-btn--active { background:#333; border-color:#333; }
@@ -536,7 +536,7 @@
       list.innerHTML = '';
       signersList.forEach((s, i) => {
         const el = document.createElement('div');
-        el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2,#f5f5f3);border-radius:6px;font-size:.85rem';
+        el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-e);border:1px solid var(--bd);border-radius:6px;font-size:.85rem';
         el.innerHTML = `
           <span style="font-weight:600;color:var(--ac);font-size:.75rem;width:20px">${s.order}.</span>
           <span style="flex:1">${esc(s.email)}</span>

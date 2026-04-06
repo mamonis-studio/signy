@@ -96,9 +96,9 @@
 
       <!-- Template selector -->
       <div id="templateSection" class="mt-16" style="display:none">
-        <p style="font-size:.8rem;color:var(--tx2);margin-bottom:8px">保存済みテンプレート:</p>
+        <p style="font-size:.8rem;color:var(--tx2);margin-bottom:8px" data-i18n="send.tmpl.saved"></p>
         <select id="templateSelect" class="form-input" style="font-size:.85rem">
-          <option value="">テンプレートを選択...</option>
+          <option value="" data-i18n="send.tmpl.select"></option>
         </select>
       </div>
 
@@ -118,33 +118,33 @@
       <!-- Signer selector -->
       <div style="margin-bottom:12px">
         <div class="signer-select" id="signerSelect">
-          <button class="signer-btn signer-btn--self" data-for="self">自分（送信者）</button>
-          <button class="signer-btn signer-btn--active" data-for="signer">署名者（相手）</button>
+          <button class="signer-btn signer-btn--self" data-for="self" data-i18n="send.signer.self"></button>
+          <button class="signer-btn signer-btn--active" data-for="signer" data-i18n="send.signer.other"></button>
         </div>
         <p style="font-size:.75rem;color:var(--txm);margin-top:6px" id="signerHint" data-i18n="send.guide.signer"></p>
       </div>
 
       <!-- Field type toolbar -->
       <div class="field-toolbar" id="fieldToolbar">
-        <button data-type="signature" title="署名欄">
+        <button data-type="signature">
           <svg viewBox="0 0 24 24" fill="none" stroke="#00e0a0" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          署名
+          <span data-i18n="send.field.sig"></span>
         </button>
-        <button data-type="stamp" title="電子印鑑">
+        <button data-type="stamp">
           <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><text x="12" y="16" text-anchor="middle" fill="#ef4444" stroke="none" font-size="10" font-weight="bold">印</text></svg>
-          印鑑
+          <span data-i18n="send.field.stamp"></span>
         </button>
-        <button data-type="text" title="テキスト入力欄">
+        <button data-type="text">
           <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-          テキスト
+          <span data-i18n="send.field.text"></span>
         </button>
-        <button data-type="date" title="日付欄（自動入力）">
+        <button data-type="date">
           <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          日付
+          <span data-i18n="send.field.date"></span>
         </button>
-        <button data-type="checkbox" title="チェックボックス">
+        <button data-type="checkbox">
           <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 22 4" stroke-width="2.5"/></svg>
-          確認
+          <span data-i18n="send.field.check"></span>
         </button>
       </div>
 
@@ -164,7 +164,7 @@
 
       <!-- Template save -->
       <div class="template-bar">
-        <button class="btn btn--ghost btn--sm" id="saveTemplateBtn">テンプレートとして保存</button>
+        <button class="btn btn--ghost btn--sm" id="saveTemplateBtn" data-i18n="send.tmpl.save"></button>
       </div>
 
       <div class="flex mt-24" style="justify-content:space-between">
@@ -185,12 +185,12 @@
 
           <!-- Multi-signer section -->
           <div class="form-group">
-            <label class="form-label">署名者 <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(複数可)</span></label>
+            <label class="form-label"><span data-i18n="send.signers"></span> <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0" data-i18n="send.signers.multi"></span></label>
             <p style="font-size:.75rem;color:var(--txm);margin-bottom:4px" data-i18n="send.guide.order"></p>
             <div id="signerList" style="display:flex;flex-direction:column;gap:8px"></div>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <input type="email" class="form-input" id="newSignerEmail" placeholder="signer@example.com" style="flex:1">
-              <button class="btn btn--secondary btn--sm" id="addSignerBtn" type="button" style="flex-shrink:0">追加</button>
+              <input type="email" class="form-input" id="newSignerEmail" data-i18n-attr="placeholder:send.email.ph" style="flex:1">
+              <button class="btn btn--secondary btn--sm" id="addSignerBtn" type="button" style="flex-shrink:0" data-i18n="send.signers.add"></button>
             </div>
           </div>
 
@@ -203,10 +203,10 @@
 
       <!-- Bulk send (PRO) -->
       <div class="card mt-16" id="bulkSendCard" style="display:none">
-        <h3 style="font-size:.9rem;margin-bottom:12px">一括送信 (CSV) <span style="font-size:.7rem;background:var(--ac);color:#fff;padding:2px 8px;border-radius:100px;margin-left:6px">PRO</span></h3>
-        <p style="font-size:.8rem;color:var(--tx2);margin-bottom:12px">CSVファイルで複数の宛先に一括送信。ヘッダーに「email」列が必要です。</p>
+        <h3 style="font-size:.9rem;margin-bottom:12px"><span data-i18n="send.bulk.title"></span> <span style="font-size:.7rem;background:var(--ac);color:#fff;padding:2px 8px;border-radius:100px;margin-left:6px">PRO</span></h3>
+        <p style="font-size:.8rem;color:var(--tx2);margin-bottom:12px" data-i18n="send.bulk.desc"></p>
         <input type="file" accept=".csv" id="csvInput" style="font-size:.85rem">
-        <button class="btn btn--primary btn--sm mt-12" id="bulkSendBtn" disabled>一括送信</button>
+        <button class="btn btn--primary btn--sm mt-12" id="bulkSendBtn" disabled data-i18n="send.bulk.btn"></button>
       </div>
 
       <div class="flex mt-24" style="justify-content:space-between">
@@ -333,9 +333,9 @@
     document.getElementById('toS2').addEventListener('click',async()=>{
       if(!pdfFile)return;
       const btn=document.getElementById('toS2');
-      btn.disabled=true;btn.textContent='読み込み中...';
+      btn.disabled=true;btn.textContent=t('send.loading');
       goStep(2);
-      try{await loadPdf()}catch(e){toast(e.message||'PDF読み込みエラー','error');goStep(1)}
+      try{await loadPdf()}catch(e){toast(e.message||t('toast.pdf.err'),'error');goStep(1)}
       btn.disabled=false;btn.textContent=t('send.next');
     });
     document.getElementById('backS1').addEventListener('click',()=>goStep(1));
@@ -475,9 +475,9 @@
           const sec = document.getElementById('templateSection');
           sec.style.display = 'block';
           const sel = document.getElementById('templateSelect');
-          sel.innerHTML = '<option value="">テンプレートを選択...</option>';
-          data.templates.forEach(t => {
-            sel.innerHTML += `<option value="${esc(t.id)}">${esc(t.name)} (${t.fields.length} fields)</option>`;
+          sel.innerHTML = `<option value="">${t('send.tmpl.select')}</option>`;
+          data.templates.forEach(tmpl => {
+            sel.innerHTML += `<option value="${esc(tmpl.id)}">${esc(tmpl.name)} (${tmpl.fields.length} fields)</option>`;
           });
         }
       } catch{}
@@ -496,12 +496,12 @@
           data.fields.forEach(tf => addField(tf.type, tf));
           toast(t('toast.tmpl.applied'),'success');
         }
-      }catch(e){ toast(e.message||'テンプレート読み込みエラー','error'); }
+      }catch(err){ toast(err.message||t('toast.tmpl.err'),'error'); }
     });
 
     document.getElementById('saveTemplateBtn').addEventListener('click', async()=>{
       if(!fields.length){ toast(t('toast.tmpl.need'),'error'); return; }
-      const name = prompt('テンプレート名を入力:', document.getElementById('docTitle').value || 'マイテンプレート');
+      const name = prompt(t('send.tmpl.prompt'), document.getElementById('docTitle').value || t('send.tmpl.default'));
       if(!name) return;
       try {
         const templateFields = fields.map(f => ({
@@ -512,7 +512,7 @@
         }));
         await api('/templates', { method:'POST', body: JSON.stringify({ name, fields: templateFields }) });
         toast(t('toast.tmpl.saved'),'success');
-      } catch(e) { toast(e.message||'保存エラー','error'); }
+      } catch(e) { toast(e.message||t('toast.save.err'),'error'); }
     });
 
     // Multi-signer management
@@ -567,7 +567,7 @@
       if (!title) { toast(t('toast.title.req'),'error'); return; }
 
       const btn = document.getElementById('bulkSendBtn');
-      btn.disabled = true; btn.textContent = '送信中...';
+      btn.disabled = true; btn.textContent = t('send.sending');
 
       try {
         const csvText = await csvInput.files[0].text();
@@ -586,8 +586,8 @@
         toast(`${res.sent}${t('toast.bulk.sent')}`, 'success');
         setTimeout(() => location.href = '/', 2000);
       } catch(e) {
-        toast(e.message || 'エラー', 'error');
-        btn.disabled = false; btn.textContent = '一括送信';
+        toast(e.message || t('err'), 'error');
+        btn.disabled = false; btn.textContent = t('send.bulk.btn');
       }
     });
 

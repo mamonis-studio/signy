@@ -150,15 +150,15 @@
         <!-- Stamp mode (for stamp fields) -->
         <div id="stampMode" style="display:none">
           <div class="stamp-controls">
-            <input type="text" id="stampNameInput" placeholder="氏名を入力" maxlength="4">
+            <input type="text" id="stampNameInput" data-i18n-attr="placeholder:sign.stamp.name" maxlength="4">
             <div class="stamp-style-row">
-              <button class="stamp-style-btn active" data-style="circle">丸印</button>
-              <button class="stamp-style-btn" data-style="square">角印</button>
+              <button class="stamp-style-btn active" data-style="circle" data-i18n="sign.stamp.circle"></button>
+              <button class="stamp-style-btn" data-style="square" data-i18n="sign.stamp.square"></button>
             </div>
           </div>
           <div class="stamp-preview"><canvas id="stampCanvas" width="120" height="120" class="stamp-canvas"></canvas></div>
         </div>
-        <button class="btn btn--primary btn--block mt-12" id="applySig">適用</button>
+        <button class="btn btn--primary btn--block mt-12" id="applySig" data-i18n="sign.apply"></button>
       </div>
 
       <!-- Agreement -->
@@ -279,7 +279,7 @@
         if(f.type==='text'){
           const inp=document.createElement('input');
           inp.type='text';inp.className='sf-input';
-          inp.placeholder=f.label||'入力';
+          inp.placeholder=f.label||t('sign.input.ph');
           inp.value=fieldValues[i]?.value||'';
           inp.addEventListener('input',()=>{
             fieldValues[i]={type:'text',value:inp.value};
@@ -290,7 +290,7 @@
           const dateStr=new Date().toLocaleDateString('ja-JP');
           fieldValues[i]={type:'date',value:dateStr};
           el.innerHTML=`<span class="sf-overlay__label" style="color:#eab308;font-size:.75rem">${dateStr}</span>`;
-          el.title='署名日が自動入力されます';
+          el.title=t('sign.date.auto');
         } else if(f.type==='checkbox'){
           const cb=document.createElement('input');
           cb.type='checkbox';cb.className='sf-checkbox';
@@ -306,7 +306,7 @@
           if(fieldValues[i]?.dataUrl){
             el.innerHTML=`<img src="${fieldValues[i].dataUrl}" style="width:100%;height:100%;object-fit:contain">`;
           } else {
-            const typeLabel = f.type==='stamp'?'印鑑をクリック':'署名をクリック';
+            const typeLabel = f.type==='stamp'?t('sign.click.stamp'):t('sign.click.sig');
             el.innerHTML=`<span class="sf-overlay__label" style="color:${f.type==='stamp'?'#ef4444':'#00e0a0'}">${typeLabel}</span>`;
           }
           el.addEventListener('click',()=>openSigPad(i, f.type));
@@ -354,14 +354,14 @@
       pad.style.display='block';
 
       if(fieldType==='stamp'){
-        document.getElementById('sigPadTitle').textContent='電子印鑑';
+        document.getElementById('sigPadTitle').textContent=t('sign.stamp');
         document.getElementById('sigPadTabs').style.display='none';
         document.getElementById('drawMode').style.display='none';
         document.getElementById('typeMode').style.display='none';
         document.getElementById('stampMode').style.display='block';
         renderStamp();
       } else {
-        document.getElementById('sigPadTitle').textContent='署名';
+        document.getElementById('sigPadTitle').textContent=t('sign.signature');
         document.getElementById('sigPadTabs').style.display='flex';
         document.getElementById('stampMode').style.display='none';
         switchMode('draw');

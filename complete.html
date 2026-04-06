@@ -19,11 +19,11 @@
 
   <main><section class="complete"><div class="container container--narrow">
     <div class="complete__icon" id="cIcon"></div>
-    <h1 class="complete__title" data-i18n="comp.title"></h1>
-    <p class="complete__desc" data-i18n="comp.desc"></p>
+    <h1 class="complete__title" data-i18n="complete.title"></h1>
+    <p class="complete__desc" data-i18n="complete.desc"></p>
     <div class="complete__actions">
       <a href="#" class="btn btn--primary" id="dlBtn"></a>
-      <a href="/" class="btn btn--secondary" data-i18n="comp.back"></a>
+      <a href="/" class="btn btn--secondary" data-i18n="complete.back"></a>
     </div>
   </div></section></main>
 
@@ -42,7 +42,7 @@
     const {I, Logo} = Signy;
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('cIcon').innerHTML = I.checkCircle;
-    document.getElementById('dlBtn').innerHTML = `${I.download}<span data-i18n="comp.dl"></span>`;
+    document.getElementById('dlBtn').innerHTML = `${I.download}<span data-i18n="complete.dl"></span>`;
     Signy.applyI18n();
     const p = new URLSearchParams(location.search);
     const id = p.get('id'), tk = p.get('token');

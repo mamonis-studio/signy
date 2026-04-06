@@ -2,109 +2,73 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="description" content="Signy - シンプルな料金プラン。FREE(月5件) + PRO(月額550円/無制限)。">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Signy — 料金プラン</title>
+  <title>Signy - Pricing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <header class="header"><div class="header__inner">
     <a href="/" class="header__logo" id="logo"></a>
-    <nav class="header__nav">
-      <a href="/" class="header__link" data-i18n="nav.dashboard"></a>
-      <a href="/login.html" class="header__link" data-auth="login" data-i18n="nav.login"></a>
-      <button class="lang-toggle">EN</button>
-    </nav>
+    <nav class="header__nav"><a href="/" class="header__link" data-i18n="nav.dashboard"></a><button class="lang-toggle">EN</button></nav>
   </div></header>
-
-  <main><section class="pricing"><div class="container">
-    <div class="text-center">
-      <h1 data-i18n="price.title"></h1>
-      <p class="mt-8" data-i18n="price.sub"></p>
+  <main><section style="padding:80px 0"><div class="container" style="max-width:800px">
+    <h1 class="text-center mb-8" style="font-size:2rem" data-i18n="price.title"></h1>
+    <p class="text-center text-muted mb-48" style="max-width:480px;margin:0 auto" data-i18n="price.sub"></p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px" id="pGrid">
+      <!-- FREE -->
+      <div class="card" style="padding:32px 28px">
+        <div style="font-size:.85rem;font-weight:700;color:var(--tx2)" data-i18n="price.free.name"></div>
+        <div style="font-family:var(--font-mono);font-size:2.5rem;font-weight:700;line-height:1.1"><span style="font-size:1.2rem">&yen;</span><span data-i18n="price.free.price"></span><span style="font-size:.85rem;font-weight:400;color:var(--tx2)" data-i18n="price.mo"></span></div>
+        <p class="text-muted" style="font-size:.8rem;margin:8px 0 20px" data-i18n="price.free.desc"></p>
+        <ul style="list-style:none;padding:0;margin:0 0 24px;font-size:.85rem" class="feat-list">
+          <li data-i18n="price.free.f1"></li><li data-i18n="price.free.f3"></li>
+          <li data-i18n="price.free.f2"></li><li data-i18n="price.free.f5"></li>
+          <li data-i18n="price.free.f4"></li><li data-i18n="price.free.f6"></li>
+        </ul>
+        <a href="/login.html" class="btn btn--secondary btn--block" data-i18n="price.cta.free"></a>
+      </div>
+      <!-- PRO -->
+      <div class="card" style="padding:32px 28px;border:2px solid var(--ac);position:relative">
+        <span style="position:absolute;top:-12px;right:20px;font-size:.7rem;font-weight:700;color:#fff;background:var(--ac);padding:4px 14px;border-radius:100px" data-i18n="price.pro.badge"></span>
+        <div style="font-size:.85rem;font-weight:700;color:var(--tx2)" data-i18n="price.pro.name"></div>
+        <div style="font-family:var(--font-mono);font-size:2.5rem;font-weight:700;line-height:1.1"><span style="font-size:1.2rem">&yen;</span><span data-i18n="price.pro.price"></span><span style="font-size:.85rem;font-weight:400;color:var(--tx2)" data-i18n="price.pro.tax"></span></div>
+        <p class="text-muted" style="font-size:.8rem;margin:8px 0 20px" data-i18n="price.pro.desc"></p>
+        <ul style="list-style:none;padding:0;margin:0 0 24px;font-size:.85rem" class="feat-list">
+          <li><strong style="color:var(--ac)" data-i18n="price.pro.f1"></strong></li>
+          <li data-i18n="price.pro.f5"></li><li data-i18n="price.pro.f6"></li>
+          <li data-i18n="price.pro.f2"></li><li data-i18n="price.pro.f3"></li>
+          <li data-i18n="price.pro.f7"></li><li data-i18n="price.pro.f4"></li>
+        </ul>
+        <button class="btn btn--primary btn--block" id="proBtn" onclick="subscribe()" data-i18n="price.cta.pro"></button>
+      </div>
     </div>
-    <div class="pricing__grid" id="grid"></div>
-    <div class="text-center mt-32" id="manageArea" style="display:none">
-      <p class="text-muted mb-16" id="currentPlanText"></p>
-      <button class="btn btn--secondary" onclick="manageSubscription()" data-i18n="price.manage"></button>
-    </div>
+    <p class="text-center text-muted mt-48" style="font-size:.85rem" data-i18n="price.note"></p>
+    <div class="text-center"><button class="btn btn--ghost mt-16" id="manageBtn" style="display:none" onclick="manage()" data-i18n="price.manage"></button></div>
   </div></section></main>
-
-  <footer class="footer">
-    <p class="footer__text" data-i18n="footer"></p>
-    <div class="footer__links">
-      <a href="https://mamonis.studio/privacy_policy" data-i18n="footer.priv"></a>
-      <a href="https://mamonis.studio/terms_of_use" data-i18n="footer.terms"></a>
-      <a href="https://mamonis.studio/tokushoho" data-i18n="footer.law"></a>
-    </div>
-  </footer>
-
+  <footer class="footer"><p class="footer__text" data-i18n="footer"></p><div class="footer__links">
+    <a href="https://mamonis.studio/privacy_policy" data-i18n="footer.priv"></a>
+    <a href="https://mamonis.studio/terms_of_use" data-i18n="footer.terms"></a>
+    <a href="https://mamonis.studio/tokushoho" data-i18n="footer.law"></a>
+  </div></footer>
   <script src="/js/app.js"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const {I, Logo, t, applyI18n} = Signy;
-    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
-
-    const ck = I.check;
-    const plans = [
-      {name:'FREE', price:'¥0', yr:'price.free.yr', feats:['price.free.f1','price.free.f2','price.free.f3','price.free.f4'], cta:'price.cta.free', cls:'btn--secondary', plan:null},
-      {name:'BASIC', price:'¥980', yr:'price.basic.yr', feats:['price.basic.f1','price.basic.f2','price.basic.f3','price.basic.f4'], cta:'price.cta.basic', yearCta:'price.cta.basic.yr', cls:'btn--primary', featured:true, plan:'basic'},
-      {name:'PRO', price:'¥2,980', yr:'price.pro.yr', feats:['price.pro.f1','price.pro.f2','price.pro.f3','price.pro.f4'], cta:'price.cta.pro', yearCta:'price.cta.pro.yr', cls:'btn--secondary', plan:'pro'},
-    ];
-
-    const grid = document.getElementById('grid');
-    plans.forEach(p => {
-      const featHtml = p.feats.map(f => `<li>${ck}<span data-i18n="${f}"></span></li>`).join('');
-      grid.insertAdjacentHTML('beforeend', `
-        <div class="card price-card ${p.featured?'price-card--featured':''}">
-          <div class="price-card__name">${p.name}</div>
-          <div class="price-card__price">${p.price} <span class="unit" data-i18n="price.mo"></span></div>
-          <div class="price-card__annual" data-i18n="${p.yr}"></div>
-          <ul class="price-card__features">${featHtml}</ul>
-          ${p.plan
-            ? `<div class="flex flex-col gap-8">
-                <button class="btn ${p.cls} btn--block" onclick="checkout('${p.plan}','monthly')" data-i18n="${p.cta}"></button>
-                <button class="btn btn--ghost btn--sm btn--block" onclick="checkout('${p.plan}','yearly')" data-i18n="${p.yearCta}"></button>
-              </div>`
-            : `<a href="/login.html" class="btn ${p.cls} btn--block" data-i18n="${p.cta}"></a>`
-          }
-        </div>`);
-    });
+  document.addEventListener('DOMContentLoaded',()=>{
+    const{Logo,applyI18n,isLoggedIn,getUser,t}=Signy;
+    document.getElementById('logo').innerHTML=`${Logo}<span class="header__logo-text">Signy</span>`;
     applyI18n();
-
-    // Stripe Checkout
-    window.checkout = async (plan, interval) => {
-      if (!Signy.isLoggedIn()) { location.href = '/login.html'; return; }
-      try {
-        const { url } = await Signy.api('/stripe/checkout', {
-          method: 'POST',
-          body: JSON.stringify({ plan, interval }),
-        });
-        location.href = url;
-      } catch (e) {
-        Signy.toast(e.message || 'エラーが発生しました', 'error');
-      }
-    };
-
-    // Portal (manage existing subscription)
-    window.manageSubscription = async () => {
-      try {
-        const { url } = await Signy.api('/stripe/portal', { method: 'POST', body: '{}' });
-        location.href = url;
-      } catch (e) {
-        Signy.toast(e.message || 'エラーが発生しました', 'error');
-      }
-    };
-
-    // Show manage area for paid users
-    const user = Signy.getUser();
-    if (user && user.plan && user.plan !== 'free') {
-      const area = document.getElementById('manageArea');
-      area.style.display = 'block';
-      document.getElementById('currentPlanText').textContent =
-        Signy.lang === 'ja'
-          ? `現在のプラン: ${user.plan.toUpperCase()}`
-          : `Current plan: ${user.plan.toUpperCase()}`;
-    }
+    document.querySelectorAll('.feat-list li').forEach(li=>{li.style.padding='5px 0 5px 20px';li.style.position='relative';
+      const dot=document.createElement('span');dot.style.cssText='position:absolute;left:0;top:10px;width:8px;height:8px;border-radius:50%;background:var(--ac);opacity:.5';li.prepend(dot);
+    });
+    if(isLoggedIn()){const u=getUser();if(u?.plan==='pro'){document.getElementById('proBtn').textContent=t('price.current');document.getElementById('proBtn').disabled=true;document.getElementById('proBtn').style.opacity='.5';document.getElementById('manageBtn').style.display='inline-block'}}
   });
+  async function subscribe(){if(!Signy.isLoggedIn()){location.href='/login.html';return}try{const r=await Signy.api('/stripe/checkout',{method:'POST',body:JSON.stringify({})});if(r.url)location.href=r.url}catch(e){Signy.toast(e.message,'error')}}
+  async function manage(){try{const r=await Signy.api('/stripe/portal',{method:'POST'});if(r.url)location.href=r.url}catch(e){Signy.toast(e.message,'error')}}
   </script>
+  <style>@media(max-width:640px){#pGrid{grid-template-columns:1fr!important}}</style>
 </body>
 </html>

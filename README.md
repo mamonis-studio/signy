@@ -1,131 +1,152 @@
-# Signy — 電子サインサービス
+# Signy v2 — 月500円で電子署名し放題
 
-## ファイル構成
+GMOサインの完全上位互換を月550円（税込）で提供する電子署名サービス。
+
+## GMOサイン vs Signy
+
+| 機能 | Signy PRO (550円) | GMOサイン (9,680円) |
+|------|-------------------|---------------------|
+| 署名回数 | 無制限 | 無制限 |
+| 送信料/件 | 0円 | 110円 |
+| 署名欄の位置指定 | 5種類 | OK |
+| 電子印鑑（ハンコ） | OK | OK |
+| テンプレート | OK | OK |
+| 署名ワークフロー | OK | OK |
+| 自動リマインダー | OK | OK |
+| CSV一括送信 | OK | OK |
+| PDFズーム | OK | -- |
+| ダッシュボード検索 | OK | OK |
+| 署名依頼キャンセル | OK | OK |
+| もう一度送る（複製） | OK | -- |
+| プライバシー | **クライアント処理** | サーバー処理 |
+
+## アーキテクチャ
 
 ```
-signy/
-├── _worker.js      ← Cloudflare Worker（API全部入り）
-├── index.html      ← ランディング / ダッシュボード
-├── send.html       ← 送信フロー（PDF → 署名欄配置 → 送信）
-├── sign.html       ← 署名者フロー（手書き / テキスト）
-├── complete.html   ← 署名完了
-├── pricing.html    ← 料金プラン
-├── login.html      ← Magic Link認証
-├── css/style.css   ← 全ページ共通スタイル
-└── js/app.js       ← 共通モジュール（i18n・認証・API・SVGアイコン）
+Cloudflare Pages (Static) + Worker (API)
+├── _worker.js        全APIエンドポイント (547行, 40関数)
+├── index.html        LP + ダッシュボード (検索/フィルター/アクション)
+├── send.html         署名依頼 (5種フィールド/テンプレート/一括送信/複製)
+├── sign.html         署名者ビュー (印鑑生成/ズーム/モバイル対応)
+├── pricing.html      Free + Pro 料金
+├── login.html        Magic link ログイン
+├── complete.html     署名完了
+├── js/app.js         共通モジュール (i18n 100キー日英, auth, icons)
+├── css/style.css     スタイルシート (JetBrains Mono + DM Sans)
+└── scheduled()       自動リマインダー (Cron: 毎朝9時JST)
 ```
 
-## デプロイ手順
+## APIエンドポイント
 
-### 1. Cloudflare Pages プロジェクト作成
+### 認証
+| Method | Path | 説明 |
+|--------|------|------|
+| POST | /api/auth/magic-link | メール送信 (5回/15分) |
+| POST | /api/auth/verify | トークン検証 (10回/15分) |
+| POST | /api/auth/refresh | JWT更新（プラン変更即反映） |
 
-```bash
-# 初回のみ
-wrangler pages project create signy
-```
+### ドキュメント
+| Method | Path | 説明 |
+|--------|------|------|
+| GET | /api/documents | 一覧取得 (検索/フィルター用データ含む) |
+| POST | /api/documents/upload | 新規作成 |
+| POST | /api/documents/send | 署名依頼メール送信 |
+| POST | /api/documents/bulk-send | CSV一括送信 (PRO) |
+| GET | /api/documents/:id | 署名者向け情報取得 |
+| POST | /api/documents/:id/sign | 署名実行 |
+| GET | /api/documents/:id/status | ステータス確認 |
+| GET | /api/documents/:id/pdf | PDF取得（署名者用） |
+| GET | /api/documents/:id/download | 署名済みPDF（署名トークン） |
+| POST | /api/documents/:id/remind | 手動リマインダー (1回/時) |
+| POST | /api/documents/:id/cancel | 署名依頼キャンセル + 通知 |
+| GET | /api/documents/:id/owner-download | オーナーPDFダウンロード（JWT） |
+| POST | /api/documents/:id/duplicate | 複製用データ取得 |
 
-### 2. KV + R2 作成
+### テンプレート
+| Method | Path | 説明 |
+|--------|------|------|
+| GET | /api/templates | 一覧 |
+| POST | /api/templates | 作成 (PRO) |
+| GET | /api/templates/:id | 取得 |
+| DELETE | /api/templates/:id | 削除 |
 
-```bash
-wrangler kv namespace create SIGNY_KV
-wrangler r2 bucket create signy-documents
-```
+### Stripe
+| Method | Path | 説明 |
+|--------|------|------|
+| POST | /api/stripe/checkout | Checkout Session作成 |
+| POST | /api/stripe/portal | Customer Portal |
+| POST | /api/stripe/webhook | Webhook受信 |
 
-### 3. デプロイ
+## プラン
 
-```bash
-wrangler pages deploy ./signy --project-name=signy
-```
-
-### 4. Bindings 設定（Cloudflare Dashboard）
-
-**Pages → signy → Settings → Bindings**
-
-| 種類 | 変数名 | 紐付け先 |
+| | FREE | PRO |
 |---|---|---|
-| KV Namespace | `SIGNY_KV` | 手順2で作ったKV |
-| R2 Bucket | `DOCUMENTS` | `signy-documents` |
+| 月額 | 0円 | 550円（税込） |
+| 署名回数 | 月5件 | 無制限 |
+| PDF上限 | 10MB | 50MB |
+| テンプレート | -- | OK |
+| 一括送信 | -- | OK |
+| 保管期間 | 14日 | 無期限 |
 
-### 5. 環境変数（Dashboard → Settings → Environment Variables）
+## セットアップ
 
-| 変数名 | 値 |
-|---|---|
-| `JWT_SECRET` | ランダム文字列（32文字以上） |
-| `RESEND_API_KEY` | Resend APIキー |
-| `APP_URL` | 本番URL（例: `https://signy.jp`） |
-| `STRIPE_SECRET_KEY` | Stripe Secret Key（`sk_live_...`） |
-| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook Signing Secret（`whsec_...`） |
-| `STRIPE_PRICE_BASIC_MONTHLY` | BASICの月額Price ID（`price_...`） |
-| `STRIPE_PRICE_BASIC_YEARLY` | BASICの年額Price ID |
-| `STRIPE_PRICE_PRO_MONTHLY` | PROの月額Price ID |
-| `STRIPE_PRICE_PRO_YEARLY` | PROの年額Price ID |
-
-### 6. Stripe設定
-
-1. **Stripe Dashboard → Products** で2商品作成（BASIC / PRO）
-2. 各商品に月額・年額の2価格を設定
-3. Price IDを環境変数にセット
-4. **Stripe Dashboard → Developers → Webhooks** でエンドポイント追加:
-   - URL: `https://signy.jp/api/stripe/webhook`
-   - イベント: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-5. Webhook Signing Secretを環境変数にセット
-6. **Stripe Dashboard → Settings → Customer Portal** でポータルを有効化
-
-### 7. 再デプロイ（Bindings/ENV反映）
-
+### 1. Cloudflare Pages
 ```bash
-wrangler pages deploy ./signy --project-name=signy
+git push origin main
+# Cloudflare Dashboard → Pages → Create → Connect GitHub
+# Build command: (empty)
+# Build output: (empty, root deploy)
+# Custom domain: signy.mamonis.studio
 ```
 
-以上。これで動く。
+### 2. Bindings
+| Type | Name | 作成コマンド |
+|------|------|-------------|
+| KV Namespace | SIGNY_KV | `wrangler kv:namespace create SIGNY_KV` |
+| R2 Bucket | SIGNY_DOCUMENTS | `wrangler r2 bucket create signy-documents` |
 
-## 技術構成
+### 3. 環境変数
+| 変数 | 値 |
+|------|-----|
+| JWT_SECRET | ランダム文字列 (32文字以上) |
+| RESEND_API_KEY | re_... |
+| APP_URL | https://signy.mamonis.studio |
+| STRIPE_SECRET_KEY | sk_... |
+| STRIPE_WEBHOOK_SECRET | whsec_... |
+| STRIPE_PRICE_PRO | price_... (月額550円) |
 
-- Vanilla JS / HTML / CSS（フレームワーク不使用）
-- pdf.js（PDF表示・CDN）
-- Canvas API（手書き署名）
-- Cloudflare Pages Advanced Mode（`_worker.js`）
-- Cloudflare KV（メタデータ・認証・使用量）
-- Cloudflare R2（PDF保存・エグレス無料）
-- Resend（メール送信）
-- Magic Link認証（HMAC-SHA256署名JWT）
+### 4. Stripe設定
+1. Product作成 → Recurring Monthly ¥550
+2. Price ID → 環境変数 STRIPE_PRICE_PRO
+3. Webhook URL: `https://signy.mamonis.studio/api/stripe/webhook`
+4. Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
 
-## KVキー構造
+### 5. Cron Trigger
+```
+0 0 * * *  (UTC 0:00 = JST 9:00)
+```
+自動リマインダー: 3日後 + 7日後に未署名者へメール送信
 
-| パターン | 内容 |
-|---|---|
-| `email:{email}` | → userId |
-| `user:{userId}` | ユーザー情報 |
-| `doc:{docId}` | ドキュメントメタデータ |
-| `user-docs:{userId}` | ドキュメントID一覧 |
-| `usage:{userId}:{YYYY-MM}` | 月間使用量 |
-| `log:{docId}` | アクセスログ |
-| `sig:{docId}` | 署名データ |
-| `audit:{docId}` | 監査証跡 |
-| `magic:{token}` | Magic Link（TTL 15分） |
+## セキュリティ (14回監査 / 56件修正)
 
-## 未実装（v2以降）
+- JWT: magic tokenをBearer tokenとして使用不可
+- CORS: 自ドメインのみ + Max-Age 86400
+- Rate Limit: magic link 5回/15分, verify 10回/15分, remind 1回/時
+- XSS: 全innerHTML/toast にesc()適用
+- Input: signFieldsホワイトリスト(50上限), title 200文字, message 2000文字, CSV 1MB
+- PDF: マジックバイト検証, 署名PDF 50MB上限
+- Headers: X-Content-Type-Options: nosniff 全レスポンス
+- Stripe: webhook署名検証, metadata optional chaining
+- Error: 500で内部情報非漏洩
+- Base64: UTF-8セーフ (b64e/b64d)
+- 月次カウンター: JST (UTC+9)
 
-- 署名画像のPDF埋め込み（pdf-lib Worker版）
-- 証跡PDF最終ページ自動付加
-- リマインダーメール（Cron Trigger）
-- 複数署名者
-- テンプレート保存
+## 技術スタック
 
-## APIエンドポイント一覧
-
-| Method | Path | 認証 | 説明 |
-|---|---|---|---|
-| POST | `/api/auth/magic-link` | - | Magic Link送信 |
-| POST | `/api/auth/verify` | - | トークン検証 → セッション発行 |
-| GET | `/api/documents` | Bearer | ドキュメント一覧 |
-| POST | `/api/documents/upload` | Bearer | PDF→R2, メタ→KV |
-| POST | `/api/documents/send` | Bearer | 署名依頼メール送信 |
-| GET | `/api/documents/:id` | token | ドキュメント情報（署名者用） |
-| POST | `/api/documents/:id/sign` | token | 署名処理 |
-| GET | `/api/documents/:id/pdf` | token | PDF配信 |
-| GET | `/api/documents/:id/download` | token | 署名済みPDFダウンロード |
-| GET | `/api/documents/:id/status` | - | ステータス確認 |
-| POST | `/api/stripe/checkout` | Bearer | Checkoutセッション作成 |
-| POST | `/api/stripe/portal` | Bearer | カスタマーポータルURL |
-| POST | `/api/stripe/webhook` | Stripe署名 | Webhook受信 |
+- Cloudflare Pages / Workers / KV / R2
+- pdf-lib (クライアントサイドPDF署名)
+- pdf.js (PDFレンダリング)
+- Stripe (決済)
+- Resend (メール)
+- JetBrains Mono + DM Sans (フォント)
+- Noto Serif JP + Dancing Script (署名用)

@@ -3,8 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Signy — 電子サインを、もっとシンプルに。</title>
-  <meta name="description" content="フリーランス・中小企業向け電子サインサービス。無料プランで月3件まで。">
+  <title>Signy — 月500円で電子署名し放題</title>
+  <meta name="description" content="月額500円で署名無制限。署名欄の位置指定、電子印鑑、テンプレート、ワークフロー、自動リマインダー。PDFはサーバーに渡しません。">
+  <meta property="og:title" content="Signy — 月500円で電子署名し放題">
+  <meta property="og:description" content="GMOサインの1/20の価格で全機能。署名は全てブラウザ内で完結。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://signy.mamonis.studio">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Signy — 月500円で電子署名し放題">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -20,7 +30,6 @@
   </div></header>
 
   <main>
-    <!-- ═══ Landing ═══ -->
     <div id="landing">
       <section class="hero"><div class="container">
         <h1 class="hero__title" data-i18n="hero.title"></h1>
@@ -29,29 +38,67 @@
           <a href="/login.html" class="btn btn--primary btn--lg" data-i18n="hero.cta"></a>
           <a href="/pricing.html" class="btn btn--secondary btn--lg" data-i18n="hero.cta2"></a>
         </div>
+        <div class="hero__trust" id="heroTrust"></div>
       </div></section>
 
       <section class="features"><div class="container">
         <h2 class="text-center mb-48" data-i18n="feat.title"></h2>
         <div class="features__grid" id="featureGrid"></div>
       </div></section>
+
+      <section class="comparison"><div class="container">
+        <h2 class="text-center mb-16" data-i18n="comp.title"></h2>
+        <p class="text-center text-muted mb-48" style="font-size:.9rem" data-i18n="comp.sub"></p>
+        <div style="overflow-x:auto;border-radius:var(--r-l);border:1px solid var(--bd)">
+          <table style="width:100%;min-width:680px;border-collapse:collapse;font-size:.85rem">
+            <thead><tr>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em;background:var(--bg-s)">機能</th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--ac);background:rgba(0,224,160,.06);font-weight:700;color:var(--ac);font-family:var(--font-mono);font-size:.8rem">Signy PRO</th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)">GMOサイン</th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)">freeeサイン</th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)">クラウドサイン</th>
+            </tr></thead>
+            <tbody id="compBody"></tbody>
+          </table>
+        </div>
+        <p style="text-align:center;font-size:.7rem;color:var(--txm);margin-top:16px;font-family:var(--font-mono)" data-i18n="comp.date"></p>
+      </div></section>
     </div>
 
-    <!-- ═══ Dashboard ═══ -->
     <div id="dashboard" style="display:none">
       <section class="dashboard"><div class="container">
         <div class="dashboard__header">
-          <div>
-            <h1 class="dashboard__title" data-i18n="dash.title"></h1>
-            <p class="text-muted mt-8" id="usageText"></p>
-          </div>
+          <div><h1 class="dashboard__title" data-i18n="dash.title"></h1><p class="text-muted mt-8" id="usageText"></p></div>
           <a href="/send.html" class="btn btn--primary" id="newBtn"></a>
+        </div>
+        <!-- Search & Filter -->
+        <div id="dashControls" style="display:none;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <input type="text" class="form-input" id="dashSearch" aria-label="Search documents" data-i18n-attr="placeholder:dash.search.ph" style="flex:1;min-width:180px;max-width:320px;padding:8px 12px;font-size:.85rem">
+          <div style="display:flex;gap:4px" id="dashFilters">
+            <button class="btn btn--ghost btn--sm dash-filter dash-filter--active" data-filter="all" data-i18n="dash.filter.all"></button>
+            <button class="btn btn--ghost btn--sm dash-filter" data-filter="pending" data-i18n="dash.filter.pending"></button>
+            <button class="btn btn--ghost btn--sm dash-filter" data-filter="signed" data-i18n="dash.filter.signed"></button>
+          </div>
         </div>
         <div class="doc-list" id="docList"></div>
         <div class="empty-state" id="emptyState" style="display:none">
           <div class="empty-state__icon" id="emptyIcon"></div>
           <h3 class="empty-state__title" data-i18n="dash.empty"></h3>
           <p class="empty-state__desc" data-i18n="dash.empty.d"></p>
+          <div style="display:flex;gap:12px;justify-content:center;margin-bottom:24px;flex-wrap:wrap">
+            <div style="text-align:center;padding:16px;flex:1;min-width:120px;max-width:180px">
+              <div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:var(--ac);margin-bottom:4px">1</div>
+              <div style="font-size:.8rem;color:var(--tx2)"><span data-i18n="empty.s1"></span><br><span data-i18n="empty.s1b"></span></div>
+            </div>
+            <div style="text-align:center;padding:16px;flex:1;min-width:120px;max-width:180px">
+              <div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:var(--ac);margin-bottom:4px">2</div>
+              <div style="font-size:.8rem;color:var(--tx2)"><span data-i18n="empty.s2"></span><br><span data-i18n="empty.s2b"></span></div>
+            </div>
+            <div style="text-align:center;padding:16px;flex:1;min-width:120px;max-width:180px">
+              <div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:var(--ac);margin-bottom:4px">3</div>
+              <div style="font-size:.8rem;color:var(--tx2)"><span data-i18n="empty.s3"></span><br><span data-i18n="empty.s3b"></span></div>
+            </div>
+          </div>
           <a href="/send.html" class="btn btn--primary" data-i18n="dash.empty.cta"></a>
         </div>
         <div class="text-center mt-48" id="loading"><div class="loader loader--lg" style="margin:0 auto"></div></div>
@@ -76,62 +123,162 @@
     document.getElementById('newBtn').innerHTML = `${I.plus}<span data-i18n="dash.new"></span>`;
     document.getElementById('emptyIcon').innerHTML = I.fileText;
 
-    // Features
+    // Trust badges
+    const trustItems = [
+      {icon: I.shield, key: 'trust.law'},
+      {icon: I.lock, key: 'trust.local'},
+      {icon: I.zap, key: 'trust.noacc'},
+    ];
+    document.getElementById('heroTrust').innerHTML = trustItems.map(ti =>
+      `<div class="hero__trust-item">${ti.icon}<span data-i18n="${ti.key}"></span></div>`
+    ).join('');
+
     const feats = [
       {icon: I.shield, t:'feat.priv', d:'feat.priv.d'},
       {icon: I.zap,    t:'feat.easy', d:'feat.easy.d'},
       {icon: I.lock,   t:'feat.legal',d:'feat.legal.d'},
       {icon: I.dollar, t:'feat.cheap',d:'feat.cheap.d'},
     ];
-    const grid = document.getElementById('featureGrid');
-    feats.forEach(f => {
-      grid.insertAdjacentHTML('beforeend', `
-        <div class="card feature-card">
-          <div class="feature-card__icon">${f.icon}</div>
-          <h3 class="feature-card__title" data-i18n="${f.t}"></h3>
-          <p class="feature-card__desc" data-i18n="${f.d}"></p>
-        </div>`);
-    });
+    document.getElementById('featureGrid').innerHTML = feats.map(f => `
+      <div class="card feature-card">
+        <div class="feature-card__icon">${f.icon}</div>
+        <h3 class="feature-card__title" data-i18n="${f.t}"></h3>
+        <p class="feature-card__desc" data-i18n="${f.d}"></p>
+      </div>`).join('');
+
+    // Comparison table
+    const rows = [
+      ['月額料金','<strong style="color:var(--ac)">550円</strong>','9,680円','1,078円','11,000円'],
+      ['署名回数','<strong style="color:var(--ac)">無制限</strong>','無制限','月10通','無制限'],
+      ['送信料/件','<strong style="color:var(--ac)">0円</strong>','110円','220円','220円'],
+      ['署名欄の位置指定','OK','OK','OK','OK'],
+      ['電子印鑑','OK','OK','--','--'],
+      ['テンプレート','OK','OK','OK','OK'],
+      ['署名ワークフロー','OK','OK','--','有料'],
+      ['自動リマインダー','OK','OK','--','OK'],
+      ['一括送信','OK','OK','--','有料'],
+      ['監査ログ','OK','OK','OK','OK'],
+      ['プライバシー','<strong style="color:var(--ac)">端末内処理</strong>','サーバー処理','サーバー処理','サーバー処理'],
+    ];
+    document.getElementById('compBody').innerHTML = rows.map(r => `<tr>${r.map((c,i) =>
+      `<td style="padding:12px 16px;border-bottom:1px solid var(--bd);${i===0?'font-family:var(--font-mono);font-size:.8rem;font-weight:600;color:var(--tx2)':''}${i===1?'background:rgba(0,224,160,.03);font-weight:600;color:var(--tx)':'color:var(--txm)'}">${c}</td>`
+    ).join('')}</tr>`).join('');
+
     Signy.applyI18n();
 
     if (isLoggedIn()) {
       document.getElementById('landing').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       loadDashboard();
-      // Checkout success toast
-      const params = new URLSearchParams(location.search);
-      if (params.get('checkout') === 'success') {
-        toast('プランのアップグレードが完了しました！', 'success');
-        history.replaceState(null, '', '/');
-      }
+      (async()=>{
+        if (new URLSearchParams(location.search).get('checkout') === 'success') {
+          try{const r=await api('/auth/refresh',{method:'POST'});if(r.sessionToken)Signy.setToken(r.sessionToken)}catch{}
+          toast(t('toast.pro.done'), 'success');
+          history.replaceState(null, '', '/');
+        }
+      })();
     }
+    document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); clearToken(); location.reload(); });
 
-    document.getElementById('logoutBtn').addEventListener('click', e => {
-      e.preventDefault(); clearToken(); location.reload();
-    });
+    let allDocs=[];
+    let currentFilter='all';
 
     async function loadDashboard() {
       try {
         const data = await api('/documents');
         document.getElementById('loading').style.display = 'none';
         if (!data.documents?.length) { document.getElementById('emptyState').style.display = 'block'; return; }
-        if (data.usage) document.getElementById('usageText').textContent = `${t('dash.usage')}: ${data.usage.count} / ${data.usage.limit}`;
-        const list = document.getElementById('docList');
-        data.documents.forEach(doc => {
-          const cls = doc.status === 'signed' ? 'signed' : doc.status === 'expired' ? 'expired' : 'pending';
-          list.insertAdjacentHTML('beforeend', `
-            <div class="doc-item">
-              <div class="doc-item__title">${esc(doc.title)}</div>
-              <div class="doc-item__signer">${esc(doc.signerEmail)}</div>
-              <span class="badge badge--${cls}">${t('st.'+doc.status)}</span>
-              <div class="doc-item__date">${fmtDate(doc.createdAt)}</div>
-            </div>`);
+        if (data.usage) document.getElementById('usageText').textContent = `${t('dash.usage')}: ${data.usage.count} / ${data.usage.limit >= 1e6 ? '\u221e' : data.usage.limit}`;
+        allDocs=data.documents;
+        document.getElementById('dashControls').style.display='flex';
+        renderDocs();
+        // Search
+        document.getElementById('dashSearch').addEventListener('input', renderDocs);
+        // Filters
+        document.querySelectorAll('.dash-filter').forEach(btn=>{
+          btn.addEventListener('click',()=>{
+            document.querySelectorAll('.dash-filter').forEach(b=>b.classList.remove('dash-filter--active'));
+            btn.classList.add('dash-filter--active');
+            currentFilter=btn.dataset.filter;
+            renderDocs();
+          });
         });
       } catch {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('emptyState').style.display = 'block';
       }
     }
+
+    function renderDocs(){
+      const query=(document.getElementById('dashSearch').value||'').toLowerCase();
+      const list=document.getElementById('docList');
+      list.innerHTML='';
+      const filtered=allDocs.filter(doc=>{
+        if(currentFilter!=='all'&&doc.status!==currentFilter)return false;
+        if(query&&!doc.title.toLowerCase().includes(query))return false;
+        return true;
+      });
+      if(!filtered.length){list.innerHTML=`<p class="text-center text-muted mt-32" style="font-size:.9rem">${query||currentFilter!=='all'?t('dash.no.match'):t('dash.no.docs')}</p>`;return}
+      filtered.forEach(doc=>{
+        const cls=doc.status==='signed'?'signed':doc.status==='expired'?'expired':doc.status==='cancelled'?'cancelled':'pending';
+        const signers=doc.signers?.map(s=>`${esc(s.email)}(${t('st.'+s.status)})`).join(' / ')||esc(doc.signerEmail||'');
+        // Action buttons
+        let actions='';
+        if(doc.status==='pending'){
+          actions+=`<button class="btn btn--ghost btn--sm act-btn remind-btn" data-id="${doc.id}" data-action="remind" title="${t('st.pending')}">${I.mail}</button>`;
+          actions+=`<button class="btn btn--ghost btn--sm act-btn" data-id="${doc.id}" data-action="cancel" title="${t('dash.cancel')}" style="color:var(--danger)">${I.x}</button>`;
+        }
+        if(doc.status==='signed'||doc.hasSignedPdf){
+          actions+=`<button class="btn btn--ghost btn--sm act-btn" data-id="${doc.id}" data-action="download" title="${t('dash.dl')}">${I.download}</button>`;
+        }
+        actions+=`<button class="btn btn--ghost btn--sm act-btn" data-id="${doc.id}" data-action="duplicate" title="${t('dash.dup')}">${I.send}</button>`;
+
+        list.insertAdjacentHTML('beforeend',`
+          <div class="doc-item" style="grid-template-columns:minmax(0,1fr) auto auto auto auto">
+            <div style="min-width:0">
+              <div class="doc-item__title">${esc(doc.title)}</div>
+              <div class="doc-item__signer">${signers}</div>
+            </div>
+            <span class="badge badge--${cls}">${t('st.'+doc.status)}</span>
+            <div class="doc-item__date">${fmtDate(doc.createdAt)}</div>
+            <div style="display:flex;gap:4px">${actions}</div>
+          </div>`);
+      });
+    }
+
+    // Delegate all action button clicks
+    document.getElementById('docList').addEventListener('click', async e => {
+      const btn=e.target.closest('.act-btn');
+      if(!btn||btn.disabled)return;
+      const id=btn.dataset.id, action=btn.dataset.action;
+      btn.disabled=true;btn.style.opacity='.5';
+      try{
+        if(action==='remind'){
+          await api(`/documents/${id}/remind`,{method:'POST'});
+          toast(t('toast.remind'),'success');
+        } else if(action==='cancel'){
+          if(!confirm(t('dash.cancel.confirm')))return;
+          await api(`/documents/${id}/cancel`,{method:'POST'});
+          toast(t('toast.cancelled'),'success');
+          // Update local state
+          const doc=allDocs.find(d=>d.id===id);if(doc)doc.status='cancelled';
+          renderDocs();
+        } else if(action==='download'){
+          const tk=Signy.getToken();
+          const r=await fetch(`/api/documents/${id}/owner-download`,{headers:{'Authorization':`Bearer ${tk}`}});
+          if(!r.ok)throw new Error('Download failed');
+          const blob=await r.blob();
+          const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+          a.download=(allDocs.find(d=>d.id===id)?.title||'document')+'_signed.pdf';
+          a.click();URL.revokeObjectURL(a.href);
+        } else if(action==='duplicate'){
+          const data=await api(`/documents/${id}/duplicate`,{method:'POST'});
+          sessionStorage.setItem('signy-dup',JSON.stringify({title:data.title||'',fields:data.signFields||[],msg:data.message||''}));
+          location.href='/send.html?dup=1';
+        }
+      }catch(e){toast(e.message,'error')}
+      finally{btn.disabled=false;btn.style.opacity=''}
+    });
   });
   </script>
 </body>

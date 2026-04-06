@@ -2,13 +2,51 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="description" content="Signy - 電子署名。ブラウザ内で完結する安全な署名。">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Signy — 署名のお願い</title>
+  <title>Signy - 署名のお願い</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Noto+Serif+JP:wght@700;900&display=swap">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    /* Stamp generator */
+    .stamp-preview { display:flex; justify-content:center; padding:20px; }
+    .stamp-canvas { border-radius:50%; }
+    .stamp-controls { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+    .stamp-controls input { width:100%; padding:10px 12px; font-size:1rem; border:1.5px solid var(--bd); border-radius:6px; text-align:center; font-family:'Noto Serif JP',serif; font-weight:700; }
+    .stamp-style-row { display:flex; gap:6px; }
+    .stamp-style-btn { flex:1; padding:8px; font-size:.75rem; font-weight:600; border:1.5px solid var(--bd); border-radius:6px; background:var(--bg); cursor:pointer; font-family:inherit; text-align:center; }
+    .stamp-style-btn.active { border-color:#ef4444; color:#ef4444; background:rgba(239,68,68,.06); }
+
+    /* Field overlays on signer view */
+    .sf-overlay { position:absolute; border:2px solid; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:default; z-index:10; }
+    .sf-overlay--signature { border-color:#00e0a0; background:rgba(0,224,160,.06); }
+    .sf-overlay--stamp { border-color:#ef4444; background:rgba(239,68,68,.06); }
+    .sf-overlay--text { border-color:#3b82f6; background:rgba(59,130,246,.06); }
+    .sf-overlay--date { border-color:#eab308; background:rgba(234,179,8,.06); }
+    .sf-overlay--checkbox { border-color:#a855f7; background:rgba(168,85,247,.06); }
+    .sf-overlay--filled { opacity:.8; }
+    .sf-overlay__label { font-size:.65rem; font-weight:600; pointer-events:none; }
+    .sf-overlay--clickable { cursor:pointer; transition: box-shadow .15s; }
+    .sf-overlay--clickable:hover { box-shadow: 0 0 0 3px rgba(0,0,0,.1); }
+
+    /* Text input fields inline */
+    .sf-input { width:100%; height:100%; border:none; background:transparent; font-size:.8rem; padding:2px 6px; outline:none; font-family:inherit; }
+    .sf-checkbox { width:100%; height:100%; cursor:pointer; accent-color: #a855f7; }
+
+    /* Completion indicator */
+    .field-checklist { margin:16px 0; }
+    .field-checklist__item { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:.85rem; }
+    .field-checklist__dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .field-checklist__dot--done { background:#00e0a0; }
+    .field-checklist__dot--pending { background:var(--bd); }
+  </style>
 </head>
 <body>
   <header class="header"><div class="header__inner">
@@ -32,6 +70,23 @@
       <h1 class="complete__title" data-i18n="sign.done"></h1>
     </div>
 
+    <div class="complete" id="signWaiting" style="display:none">
+      <div class="complete__icon" id="waitIcon" style="color:var(--tx2)"></div>
+      <h1 class="complete__title" data-i18n="sign.wait.title"></h1>
+      <p class="text-muted mt-16" id="waitDetail"></p>
+    </div>
+
+    <div class="complete" id="signError" style="display:none">
+      <div class="complete__icon" id="errIcon" style="color:var(--danger)"></div>
+      <h1 class="complete__title" data-i18n="sign.err.title"></h1>
+      <p class="text-muted mt-16" data-i18n="sign.err.desc"></p>
+    </div>
+
+    <div class="complete" id="signCancelled" style="display:none">
+      <div class="complete__icon" id="cancelIcon" style="color:var(--txm)"></div>
+      <h1 class="complete__title" data-i18n="sign.cancelled"></h1>
+    </div>
+
     <section class="sign-flow" id="signFlow" style="display:none"><div class="container container--narrow">
       <h1 class="mb-16" data-i18n="sign.title"></h1>
 
@@ -40,23 +95,29 @@
         <span class="sign-info__text" data-i18n="sign.info"></span>
       </div>
 
-      <div class="card mt-16 mb-24" style="overflow:hidden">
+      <div class="card mt-16 mb-16" style="overflow:hidden">
         <div class="flex flex-col gap-8" style="min-width:0">
-          <div class="flex items-center gap-8" style="min-width:0">
-            <span class="text-muted mono" style="font-size:.8rem;flex-shrink:0;white-space:nowrap" data-i18n="sign.document"></span>
-            <span id="dTitle" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-          </div>
-          <div class="flex items-center gap-8">
-            <span class="text-muted mono" style="font-size:.8rem;flex-shrink:0;white-space:nowrap" data-i18n="sign.from"></span>
-            <span id="dSender" class="text-muted"></span>
-          </div>
+          <div class="flex items-center gap-8"><span class="text-muted mono" style="font-size:.8rem;flex-shrink:0" data-i18n="sign.document"></span><span id="dTitle" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
+          <div class="flex items-center gap-8"><span class="text-muted mono" style="font-size:.8rem;flex-shrink:0" data-i18n="sign.from"></span><span id="dSender" class="text-muted"></span></div>
         </div>
       </div>
 
+      <!-- Field checklist -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px">
+        <span style="font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em" data-i18n="sign.guide.fields"></span>
+        <span id="fieldProgress" style="font-family:var(--font-mono);font-size:.75rem;color:var(--txm)"></span>
+      </div>
+      <p style="font-size:.75rem;color:var(--txm);margin-bottom:8px" data-i18n="sign.guide.how"></p>
+      <div class="field-checklist" id="fieldChecklist"></div>
+
+      <!-- PDF viewer -->
       <div class="pdf-editor mb-24">
         <div class="pdf-editor__toolbar">
+          <div class="pdf-editor__toolbar-group"><span class="mono" style="font-size:.8rem;color:var(--tx2)" id="sPageInd"></span></div>
           <div class="pdf-editor__toolbar-group">
-            <span class="mono" style="font-size:.8rem;color:var(--tx2)" id="sPageInd"></span>
+            <button class="btn btn--ghost btn--sm" id="zoomOut" title="縮小" style="font-size:.75rem;padding:4px 8px">-</button>
+            <span class="mono" style="font-size:.7rem;color:var(--txm)" id="zoomLevel">100%</span>
+            <button class="btn btn--ghost btn--sm" id="zoomIn" title="拡大" style="font-size:.75rem;padding:4px 8px">+</button>
           </div>
           <div class="pdf-editor__toolbar-group">
             <button class="btn btn--ghost btn--sm" id="sPrev" disabled></button>
@@ -66,25 +127,41 @@
         <div class="pdf-editor__canvas-wrap" id="sCWrap"><canvas id="sPdfC"></canvas></div>
       </div>
 
-      <div class="sig-pad mb-24">
+      <!-- Signature pad (shown when clicking signature/stamp field) -->
+      <div class="sig-pad mb-24" id="sigPad" style="display:none">
         <div class="sig-pad__header">
-          <h3 style="font-size:1rem">Signature</h3>
-          <div class="sig-pad__tabs">
+          <h3 style="font-size:1rem" id="sigPadTitle">Signature</h3>
+          <div class="sig-pad__tabs" id="sigPadTabs">
             <button class="sig-pad__tab sig-pad__tab--active" data-mode="draw" data-i18n="sign.draw"></button>
             <button class="sig-pad__tab" data-mode="type" data-i18n="sign.type"></button>
           </div>
         </div>
+        <!-- Draw mode -->
         <div id="drawMode">
           <div class="sig-pad__canvas-wrap"><canvas id="sigC" width="600" height="150"></canvas></div>
           <div class="flex mt-8" style="justify-content:flex-end">
             <button class="btn btn--ghost btn--sm" id="clearSig" data-i18n="sign.clear"></button>
           </div>
         </div>
+        <!-- Type mode -->
         <div id="typeMode" style="display:none">
           <input type="text" class="sig-pad__type-input" id="sigTI" data-i18n-attr="placeholder:sign.type.ph">
         </div>
+        <!-- Stamp mode (for stamp fields) -->
+        <div id="stampMode" style="display:none">
+          <div class="stamp-controls">
+            <input type="text" id="stampNameInput" placeholder="氏名を入力" maxlength="4">
+            <div class="stamp-style-row">
+              <button class="stamp-style-btn active" data-style="circle">丸印</button>
+              <button class="stamp-style-btn" data-style="square">角印</button>
+            </div>
+          </div>
+          <div class="stamp-preview"><canvas id="stampCanvas" width="120" height="120" class="stamp-canvas"></canvas></div>
+        </div>
+        <button class="btn btn--primary btn--block mt-12" id="applySig">適用</button>
       </div>
 
+      <!-- Agreement -->
       <label class="card flex items-center gap-16 mb-24" style="cursor:pointer;padding:16px 20px">
         <input type="checkbox" id="agree" style="width:18px;height:18px;accent-color:var(--ac)">
         <span style="font-size:.875rem;color:var(--tx2)" data-i18n="sign.agree"></span>
@@ -106,7 +183,7 @@
   <script src="/js/app.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const {I, Logo, t, applyI18n, api, toast} = Signy;
+    const {I, Logo, t, applyI18n, api, toast, esc} = Signy;
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('siIcon').innerHTML = I.info;
     document.getElementById('sPrev').innerHTML = I.chevL;
@@ -114,12 +191,27 @@
     document.getElementById('signBtn').innerHTML = `${I.pen}<span data-i18n="sign.submit"></span>`;
     document.getElementById('expIcon').innerHTML = I.alertCircle;
     document.getElementById('doneIcon').innerHTML = I.checkCircle;
+    document.getElementById('waitIcon').innerHTML = I.info;
+    document.getElementById('errIcon').innerHTML = I.alertCircle;
+    document.getElementById('cancelIcon').innerHTML = I.x;
     applyI18n();
 
-    let docData=null, pdfDoc=null, curPage=1, totalPages=0, scale=1.5, mode='draw', drawn=false;
+    let docData=null, pdfDoc=null, pdfBytes=null, curPage=1, totalPages=0;
+    // Mobile-responsive scale: smaller on phones
+    let scale = window.innerWidth < 640 ? 1.0 : window.innerWidth < 960 ? 1.2 : 1.5;
+    const baseScale = scale; // 100% baseline for zoom label
+    let mode='draw', drawn=false, activeFieldId=null, activeFieldType=null;
+    let stampStyle='circle';
+    const fieldValues = {};
     const canvas=document.getElementById('sPdfC'), ctx=canvas.getContext('2d');
     const sigC=document.getElementById('sigC'), sigCtx=sigC.getContext('2d');
     sigCtx.strokeStyle='#111';sigCtx.lineWidth=2.5;sigCtx.lineCap='round';sigCtx.lineJoin='round';
+
+    // Zoom controls
+    function updateZoomLabel(){document.getElementById('zoomLevel').textContent=Math.round(scale/baseScale*100)+'%'}
+    document.getElementById('zoomIn').addEventListener('click',async()=>{if(scale<3){scale+=0.3;await renderPage(curPage);updateZoomLabel()}});
+    document.getElementById('zoomOut').addEventListener('click',async()=>{if(scale>0.5){scale-=0.3;await renderPage(curPage);updateZoomLabel()}});
+    updateZoomLabel();
 
     const params=new URLSearchParams(location.search);
     const docId=params.get('id'), token=params.get('token');
@@ -132,22 +224,28 @@
       try{
         const r=await fetch(`/api/documents/${docId}?token=${token}`);
         const d=await r.json();
-        if(d.error){show(d.error==='expired'?'signExpired':d.error==='already_signed'?'signDone':'signExpired');return}
+        if(d.error){
+          if(d.error==='waiting'){
+            document.getElementById('waitDetail').textContent=`あなたの署名順: ${d.queue}/${d.total}番目`;
+            show('signWaiting');
+          } else if(d.error==='already_signed') show('signDone');
+          else if(d.error==='cancelled') show('signCancelled');
+          else if(d.error==='expired'||d.error==='not_found'||d.error==='invalid_token') show('signExpired');
+          else show('signError');
+          return;
+        }
         docData=d;
         document.getElementById('dTitle').textContent=d.title;
         document.getElementById('dSender').textContent=d.ownerEmail||'';
         const pdfR=await fetch(d.pdfUrl);
-        pdfDoc=await pdfjsLib.getDocument({data:await pdfR.arrayBuffer()}).promise;
+        pdfBytes=new Uint8Array(await pdfR.arrayBuffer());
+        pdfDoc=await pdfjsLib.getDocument({data:pdfBytes.slice()}).promise;
         totalPages=pdfDoc.numPages;
         document.getElementById('signLoading').style.display='none';
         document.getElementById('signFlow').style.display='block';
-        await renderPage(1);updateNav();renderFields();
+        await renderPage(1);updateNav();renderFields();buildChecklist();
       }catch(e){
-        console.error(e);
-        document.getElementById('signLoading').style.display='none';
-        document.getElementById('signFlow').style.display='block';
-        document.getElementById('dTitle').textContent='Demo';
-        document.getElementById('dSender').textContent='demo@example.com';
+        console.error(e);show('signError');
       }
     }
 
@@ -171,100 +269,335 @@
       document.querySelectorAll('.sf-overlay').forEach(e=>e.remove());
       if(!docData?.signFields)return;
       const w=document.getElementById('sCWrap');
-      docData.signFields.forEach(f=>{
-        if(f.page!==curPage)return;
+      docData.signFields.forEach((f,i)=>{
+        if(f.for==='self') return; // Skip sender-only fields
+        if(f.page!==curPage) return;
         const el=document.createElement('div');
-        el.className='sign-field sf-overlay';
-        el.style.cssText=`left:${f.x*scale}px;top:${f.y*scale}px;width:${f.width*scale}px;height:${f.height*scale}px;cursor:default;border-style:solid`;
-        el.innerHTML=`<span class="sign-field__label">${I.pen} ${t('send.field')}</span>`;
+        el.className=`sf-overlay sf-overlay--${f.type}${fieldValues[i]?' sf-overlay--filled':''}`;
+        el.style.cssText=`left:${f.x*scale}px;top:${f.y*scale}px;width:${f.width*scale}px;height:${f.height*scale}px`;
+
+        if(f.type==='text'){
+          const inp=document.createElement('input');
+          inp.type='text';inp.className='sf-input';
+          inp.placeholder=f.label||'入力';
+          inp.value=fieldValues[i]?.value||'';
+          inp.addEventListener('input',()=>{
+            fieldValues[i]={type:'text',value:inp.value};
+            updateChecklist();chk();
+          });
+          el.appendChild(inp);
+        } else if(f.type==='date'){
+          const dateStr=new Date().toLocaleDateString('ja-JP');
+          fieldValues[i]={type:'date',value:dateStr};
+          el.innerHTML=`<span class="sf-overlay__label" style="color:#eab308;font-size:.75rem">${dateStr}</span>`;
+          el.title='署名日が自動入力されます';
+        } else if(f.type==='checkbox'){
+          const cb=document.createElement('input');
+          cb.type='checkbox';cb.className='sf-checkbox';
+          cb.checked=!!fieldValues[i]?.value;
+          cb.addEventListener('change',()=>{
+            fieldValues[i]={type:'checkbox',value:cb.checked};
+            updateChecklist();chk();
+          });
+          el.appendChild(cb);
+        } else {
+          // Signature or stamp — clickable to open pad
+          el.classList.add('sf-overlay--clickable');
+          if(fieldValues[i]?.dataUrl){
+            el.innerHTML=`<img src="${fieldValues[i].dataUrl}" style="width:100%;height:100%;object-fit:contain">`;
+          } else {
+            const typeLabel = f.type==='stamp'?'印鑑をクリック':'署名をクリック';
+            el.innerHTML=`<span class="sf-overlay__label" style="color:${f.type==='stamp'?'#ef4444':'#00e0a0'}">${typeLabel}</span>`;
+          }
+          el.addEventListener('click',()=>openSigPad(i, f.type));
+        }
         w.appendChild(el);
       });
+      updateChecklist();
     }
+
+    function buildChecklist(){
+      if(!docData?.signFields)return;
+      const cl=document.getElementById('fieldChecklist');
+      cl.innerHTML='';
+      docData.signFields.forEach((f,i)=>{
+        if(f.for==='self')return;
+        const item=document.createElement('div');
+        item.className='field-checklist__item';item.id=`cl-${i}`;
+        item.innerHTML=`<span class="field-checklist__dot field-checklist__dot--pending"></span><span>${esc(f.label||f.type)} (p.${f.page})</span>`;
+        cl.appendChild(item);
+      });
+    }
+
+    function updateChecklist(){
+      if(!docData?.signFields)return;
+      let filled=0,total=0;
+      docData.signFields.forEach((f,i)=>{
+        if(f.for==='self')return;
+        total++;
+        const item=document.getElementById(`cl-${i}`);
+        if(!item)return;
+        const dot=item.querySelector('.field-checklist__dot');
+        const isFilled = fieldValues[i] && (fieldValues[i].dataUrl || fieldValues[i].value);
+        if(isFilled)filled++;
+        dot.className=`field-checklist__dot ${isFilled?'field-checklist__dot--done':'field-checklist__dot--pending'}`;
+      });
+      const prog=document.getElementById('fieldProgress');
+      if(prog)prog.textContent=total?`${filled}/${total} ${t('sign.guide.done')}`:'';
+      });
+    }
+
+    // Signature / Stamp pad
+    function openSigPad(fieldIndex, fieldType){
+      activeFieldId=fieldIndex;
+      activeFieldType=fieldType;
+      const pad=document.getElementById('sigPad');
+      pad.style.display='block';
+
+      if(fieldType==='stamp'){
+        document.getElementById('sigPadTitle').textContent='電子印鑑';
+        document.getElementById('sigPadTabs').style.display='none';
+        document.getElementById('drawMode').style.display='none';
+        document.getElementById('typeMode').style.display='none';
+        document.getElementById('stampMode').style.display='block';
+        renderStamp();
+      } else {
+        document.getElementById('sigPadTitle').textContent='署名';
+        document.getElementById('sigPadTabs').style.display='flex';
+        document.getElementById('stampMode').style.display='none';
+        switchMode('draw');
+      }
+      pad.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+
+    function switchMode(m){
+      mode=m;
+      document.getElementById('drawMode').style.display=m==='draw'?'block':'none';
+      document.getElementById('typeMode').style.display=m==='type'?'block':'none';
+      document.querySelectorAll('.sig-pad__tab').forEach(t=>t.classList.toggle('sig-pad__tab--active', t.dataset.mode===m));
+    }
+
+    document.querySelectorAll('.sig-pad__tab').forEach(tab=>{
+      tab.addEventListener('click',()=>switchMode(tab.dataset.mode));
+    });
 
     // Drawing
     let drawing=false,lx,ly;
     function pos(e){const r=sigC.getBoundingClientRect(),sx=sigC.width/r.width,sy=sigC.height/r.height,p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*sx,y:(p.clientY-r.top)*sy}}
+    sigC.addEventListener('pointerdown',e=>{drawing=true;const p=pos(e);lx=p.x;ly=p.y;sigC.setPointerCapture(e.pointerId)});
+    sigC.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(lx,ly);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();lx=p.x;ly=p.y;drawn=true});
+    sigC.addEventListener('pointerup',()=>drawing=false);
+    document.getElementById('clearSig').addEventListener('click',()=>{sigCtx.clearRect(0,0,sigC.width,sigC.height);drawn=false});
 
-    sigC.addEventListener('mousedown',e=>{drawing=true;const p=pos(e);lx=p.x;ly=p.y});
-    sigC.addEventListener('mousemove',e=>{if(!drawing)return;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(lx,ly);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();lx=p.x;ly=p.y;drawn=true;chk()});
-    sigC.addEventListener('mouseup',()=>drawing=false);sigC.addEventListener('mouseleave',()=>drawing=false);
-    sigC.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=pos(e);lx=p.x;ly=p.y},{passive:false});
-    sigC.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(lx,ly);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();lx=p.x;ly=p.y;drawn=true;chk()},{passive:false});
-    sigC.addEventListener('touchend',()=>drawing=false);
+    // Stamp rendering
+    const stampInput=document.getElementById('stampNameInput');
+    const stampCanvas=document.getElementById('stampCanvas');
+    const stampCtx=stampCanvas.getContext('2d');
 
-    document.getElementById('clearSig').addEventListener('click',()=>{sigCtx.clearRect(0,0,sigC.width,sigC.height);drawn=false;chk()});
+    stampInput.addEventListener('input', renderStamp);
 
-    const sigTI=document.getElementById('sigTI');
-    sigTI.addEventListener('input',chk);
-
-    document.querySelectorAll('.sig-pad__tab').forEach(tab=>{
-      tab.addEventListener('click',()=>{
-        document.querySelectorAll('.sig-pad__tab').forEach(t=>t.classList.remove('sig-pad__tab--active'));
-        tab.classList.add('sig-pad__tab--active');
-        mode=tab.dataset.mode;
-        document.getElementById('drawMode').style.display=mode==='draw'?'block':'none';
-        document.getElementById('typeMode').style.display=mode==='type'?'block':'none';
-        chk();
+    document.querySelectorAll('.stamp-style-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('.stamp-style-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        stampStyle=btn.dataset.style;
+        renderStamp();
       });
     });
 
+    function renderStamp(){
+      const name=stampInput.value.trim()||'印';
+      const s=stampCanvas.width;
+      stampCtx.clearRect(0,0,s,s);
+
+      const color='#cc0000';
+      stampCtx.strokeStyle=color;
+      stampCtx.fillStyle=color;
+      stampCtx.lineWidth=3;
+
+      if(stampStyle==='circle'){
+        stampCtx.beginPath();
+        stampCtx.arc(s/2,s/2,s/2-6,0,Math.PI*2);
+        stampCtx.stroke();
+      } else {
+        stampCtx.strokeRect(6,6,s-12,s-12);
+      }
+
+      // Text
+      const chars=name.split('');
+      const fontSize = chars.length<=2 ? 36 : chars.length<=3 ? 28 : 22;
+      stampCtx.font=`900 ${fontSize}px "Noto Serif JP",serif`;
+      stampCtx.textAlign='center';
+      stampCtx.textBaseline='middle';
+
+      if(chars.length<=2){
+        // Vertical layout
+        chars.forEach((c,i)=>{
+          const y = s/2 + (i - (chars.length-1)/2) * (fontSize+2);
+          stampCtx.fillText(c, s/2, y);
+        });
+      } else {
+        // Compact
+        const lineH=fontSize+2;
+        const startY=s/2 - ((chars.length-1)/2)*lineH;
+        chars.forEach((c,i)=>{
+          stampCtx.fillText(c, s/2, startY+i*lineH);
+        });
+      }
+    }
+
+    // Apply signature/stamp
+    document.getElementById('applySig').addEventListener('click',()=>{
+      if(activeFieldId===null) return;
+      let dataUrl;
+      if(activeFieldType==='stamp'){
+        dataUrl=stampCanvas.toDataURL('image/png');
+      } else if(mode==='draw'){
+        if(!drawn){toast(t('sign.pad.draw'),'error');return}
+        dataUrl=sigC.toDataURL('image/png');
+      } else {
+        const txt=document.getElementById('sigTI').value.trim();
+        if(!txt){toast(t('sign.pad.name'),'error');return}
+        const tc=document.createElement('canvas');tc.width=400;tc.height=100;
+        const tx=tc.getContext('2d');tx.fillStyle='#111';tx.font='48px "Dancing Script",cursive';
+        tx.textAlign='center';tx.textBaseline='middle';tx.fillText(txt,200,50);
+        dataUrl=tc.toDataURL('image/png');
+      }
+
+      fieldValues[activeFieldId]={type:activeFieldType,dataUrl};
+      document.getElementById('sigPad').style.display='none';
+      // Reset
+      sigCtx.clearRect(0,0,sigC.width,sigC.height);drawn=false;
+      document.getElementById('sigTI').value='';
+      renderFields();chk();
+    });
+
+    // Check completion
     const ag=document.getElementById('agree');
     ag.addEventListener('change',chk);
     function chk(){
-      const has=mode==='draw'?drawn:sigTI.value.trim().length>0;
-      document.getElementById('signBtn').disabled=!(has&&ag.checked);
+      if(!docData?.signFields){document.getElementById('signBtn').disabled=true;return}
+      const signerFields=docData.signFields.filter(f=>f.for!=='self');
+      const allFilled=signerFields.every((f,i)=>{
+        const v=fieldValues[docData.signFields.indexOf(f)];
+        if(!v) return !f.required;
+        if(!f.required) return true;
+        if(f.type==='text') return !!v.value;
+        if(f.type==='checkbox') return !!v.value;
+        if(f.type==='date') return true;
+        return !!v.dataUrl;
+      });
+      document.getElementById('signBtn').disabled=!(allFilled&&ag.checked);
     }
 
-    // Submit — クライアント側でPDFに署名画像を埋め込んでから送信
+    // Submit
     document.getElementById('signBtn').addEventListener('click',async()=>{
       const btn=document.getElementById('signBtn');btn.disabled=true;
       btn.querySelector('span').textContent=t('sign.submitting');
       try{
-        // 1. 署名画像を生成
-        let sigDataUrl;
-        if(mode==='draw'){
-          sigDataUrl=sigC.toDataURL('image/png');
-        } else {
-          const tc=document.createElement('canvas');tc.width=400;tc.height=100;
-          const tx=tc.getContext('2d');
-          tx.fillStyle='#111';tx.font='48px "Dancing Script",cursive';
-          tx.textAlign='center';tx.textBaseline='middle';
-          tx.fillText(sigTI.value.trim(),200,50);
-          sigDataUrl=tc.toDataURL('image/png');
-        }
-
-        // 2. 元PDFを取得してpdf-libで開く
-        const pdfR=await fetch(`/api/documents/${docId}/pdf?token=${token}`);
-        const pdfBytes=await pdfR.arrayBuffer();
+        // Build signed PDF with pdf-lib
         const pdfLibDoc=await PDFLib.PDFDocument.load(pdfBytes);
 
-        // 3. 署名画像をPDFに埋め込む
-        const sigImgBytes=Uint8Array.from(atob(sigDataUrl.split(',')[1]),c=>c.charCodeAt(0));
-        const sigImg=await pdfLibDoc.embedPng(sigImgBytes);
+        // Helper: pdf-lib StandardFonts only support WinAnsi (Latin). Japanese chars throw.
+        function safeDraw(page,text,opts){
+          try{page.drawText(String(text||'-'),opts)}
+          catch{try{page.drawText(String(text||'-').replace(/[^\x20-\x7E]/g,'_'),opts)}catch{}}
+        }
 
-        // 4. 各署名欄に画像を配置
-        if(docData?.signFields){
-          for(const f of docData.signFields){
-            const page=pdfLibDoc.getPage(f.page-1);
-            const {height:pageH}=page.getSize();
-            page.drawImage(sigImg,{
-              x: f.x,
-              y: pageH - f.y - f.height,
-              width: f.width,
-              height: f.height,
+        // Embed fonts once
+        const hFont = await pdfLibDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+        const bFont = await pdfLibDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+        for(const [idxStr, val] of Object.entries(fieldValues)){
+          const idx=parseInt(idxStr);
+          const f=docData.signFields[idx];
+          if(!f||f.for==='self') continue;
+          if(f.page<1||f.page>pdfLibDoc.getPageCount()) continue;
+          const page=pdfLibDoc.getPage(f.page-1);
+          const {height:pageH}=page.getSize();
+
+          if(val.dataUrl){
+            const imgBytes=Uint8Array.from(atob(val.dataUrl.split(',')[1]),c=>c.charCodeAt(0));
+            const img=await pdfLibDoc.embedPng(imgBytes);
+            page.drawImage(img,{
+              x:f.x, y:pageH-f.y-f.height, width:f.width, height:f.height,
+            });
+          } else if(val.value && f.type==='text'){
+            safeDraw(page, val.value, {
+              x:f.x+4, y:pageH-f.y-f.height+6, size:Math.min(14,f.height-8), font:bFont,
+            });
+          } else if(val.value && f.type==='date'){
+            safeDraw(page, val.value, {
+              x:f.x+4, y:pageH-f.y-f.height+6, size:Math.min(12,f.height-8), font:bFont,
+            });
+          } else if(f.type==='checkbox' && val.value){
+            page.drawText('X',{
+              x:f.x+4, y:pageH-f.y-f.height+4, size:Math.min(16,f.height-4), font:bFont,
             });
           }
         }
 
-        // 5. 署名済みPDFを生成
-        const signedPdfBytes=await pdfLibDoc.save();
+        // === Add Audit Trail Page ===
+        const auditPage = pdfLibDoc.addPage([595.28, 841.89]); // A4
+        const gray = PDFLib.rgb(0.4, 0.4, 0.4);
+        const dark = PDFLib.rgb(0.1, 0.1, 0.1);
+        const green = PDFLib.rgb(0, 0.6, 0.3);
+        const lineColor = PDFLib.rgb(0.85, 0.85, 0.85);
+        let ay = 780;
 
-        // 6. FormDataで署名済みPDFとメタデータを送信
+        auditPage.drawText('SIGNY - Electronic Signature Certificate', { x:50, y:ay, size:16, font:hFont, color:dark }); ay-=8;
+        auditPage.drawRectangle({ x:50, y:ay, width:495, height:1, color:green }); ay-=28;
+
+        auditPage.drawText('Document Title:', { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=16;
+        safeDraw(auditPage, docData.title || 'Untitled', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=28;
+
+        auditPage.drawText('Document ID:', { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=14;
+        auditPage.drawText(docId, { x:50, y:ay, size:8, font:bFont, color:gray }); ay-=24;
+
+        auditPage.drawText('Sender:', { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=14;
+        safeDraw(auditPage, docData.ownerEmail || '-', { x:50, y:ay, size:10, font:bFont, color:dark }); ay-=28;
+
+        auditPage.drawRectangle({ x:50, y:ay+6, width:495, height:1, color:lineColor }); ay-=12;
+        auditPage.drawText('Signature Record', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=24;
+
+        const signedAt = new Date().toISOString();
+        const sigRecord = [
+          ['Signer', 'This document signer'],
+          ['Signed At', new Date().toLocaleString('ja-JP', {timeZone:'Asia/Tokyo'})],
+          ['Method', 'Browser-based electronic signature (client-side)'],
+          ['Verification', 'Signature embedded directly into PDF via pdf-lib'],
+        ];
+        for(const [label, value] of sigRecord){
+          auditPage.drawText(label + ':', { x:50, y:ay, size:9, font:hFont, color:gray });
+          auditPage.drawText(value, { x:180, y:ay, size:9, font:bFont, color:dark });
+          ay -= 18;
+        }
+
+        ay -= 12;
+        auditPage.drawRectangle({ x:50, y:ay+6, width:495, height:1, color:lineColor }); ay-=12;
+        auditPage.drawText('Fields Completed', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=20;
+
+        for(const [idxStr2, val2] of Object.entries(fieldValues)){
+          const idx2=parseInt(idxStr2);
+          const f2=docData.signFields[idx2];
+          if(!f2||f2.for==='self') continue;
+          const vStr = val2.dataUrl ? '[Image/Signature]' : (val2.value || '-');
+          safeDraw(auditPage, `${f2.label||f2.type} (p.${f2.page}): ${vStr}`, { x:60, y:ay, size:8, font:bFont, color:gray });
+          ay -= 14;
+          if(ay < 60) break;
+        }
+
+        ay -= 16;
+        auditPage.drawRectangle({ x:50, y:ay+6, width:495, height:1, color:lineColor }); ay-=12;
+        auditPage.drawText('This certificate was automatically generated by Signy (mamonis.studio).', { x:50, y:ay, size:7, font:bFont, color:gray }); ay-=12;
+        auditPage.drawText('The signature was processed entirely within the signer\'s browser. No PDF data was transmitted to the server.', { x:50, y:ay, size:7, font:bFont, color:gray });
+
+        const signedPdfBytes=await pdfLibDoc.save();
         const fd=new FormData();
         fd.append('signedPdf',new Blob([signedPdfBytes],{type:'application/pdf'}),'signed.pdf');
         fd.append('token',token);
-        fd.append('signatureImage',sigDataUrl);
-        fd.append('signatureType',mode);
+        fd.append('signatureData',JSON.stringify(fieldValues));
+        fd.append('signatureType','multi');
 
         const res=await fetch(`/api/documents/${docId}/sign`,{method:'POST',body:fd});
         const result=await res.json();

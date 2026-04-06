@@ -2,11 +2,61 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="description" content="Signy - 署名依頼を送信。PDF上に署名欄を配置して、メールで送信。">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Signy — 署名依頼を送信</title>
+  <title>Signy - 署名依頼を送信</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <style>
+    /* Field type toolbar */
+    .field-toolbar { display:flex; gap:6px; flex-wrap:wrap; }
+    .field-toolbar button {
+      display:flex; align-items:center; gap:6px; padding:8px 14px;
+      font-size:.8rem; font-weight:600; border-radius:6px; cursor:pointer;
+      border:1.5px solid var(--bd); background:var(--bg); color:var(--tx);
+      font-family:inherit; transition:all .15s;
+    }
+    .field-toolbar button:hover { border-color:var(--ac); color:var(--ac); }
+    .field-toolbar button svg { width:16px; height:16px; }
+
+    /* Field overlay on PDF */
+    .sign-field { position:absolute; border:2px dashed var(--ac); border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:move; user-select:none; z-index:10; }
+    .sign-field--signature { background:rgba(0,224,160,.08); border-color:#00e0a0; }
+    .sign-field--text { background:rgba(59,130,246,.08); border-color:#3b82f6; }
+    .sign-field--date { background:rgba(234,179,8,.08); border-color:#eab308; }
+    .sign-field--stamp { background:rgba(239,68,68,.08); border-color:#ef4444; }
+    .sign-field--checkbox { background:rgba(168,85,247,.08); border-color:#a855f7; }
+    .sign-field--self { opacity:.7; border-style:solid; }
+
+    .sign-field__label { font-size:.7rem; font-weight:600; display:flex; align-items:center; gap:4px; pointer-events:none; white-space:nowrap; }
+    .sign-field__label svg { width:14px; height:14px; }
+    .sign-field--signature .sign-field__label { color:#00e0a0; }
+    .sign-field--text .sign-field__label { color:#3b82f6; }
+    .sign-field--date .sign-field__label { color:#eab308; }
+    .sign-field--stamp .sign-field__label { color:#ef4444; }
+    .sign-field--checkbox .sign-field__label { color:#a855f7; }
+
+    .sign-field__remove { position:absolute; top:-8px; right:-8px; width:20px; height:20px; border-radius:50%; background:var(--danger,#ef4444); color:#fff; border:none; cursor:pointer; font-size:12px; display:none; align-items:center; justify-content:center; z-index:20; }
+    .sign-field:hover .sign-field__remove { display:flex; }
+    .sign-field__resize { position:absolute; bottom:-4px; right:-4px; width:12px; height:12px; background:var(--ac); border-radius:2px; cursor:nwse-resize; display:none; z-index:20; }
+    .sign-field:hover .sign-field__resize { display:block; }
+
+    /* Signer selector */
+    .signer-select { display:flex; gap:6px; margin-bottom:12px; }
+    .signer-btn { padding:6px 14px; font-size:.75rem; font-weight:600; border-radius:100px; border:1.5px solid var(--bd); background:var(--bg); cursor:pointer; font-family:inherit; transition:all .15s; }
+    .signer-btn--active { background:var(--ac); color:#fff; border-color:var(--ac); }
+    .signer-btn--self { border-color:#666; }
+    .signer-btn--self.signer-btn--active { background:#333; border-color:#333; }
+
+    /* Template actions */
+    .template-bar { display:flex; gap:8px; margin-top:12px; }
+    .template-bar button { font-size:.75rem; padding:6px 12px; }
+  </style>
 </head>
 <body>
   <header class="header"><div class="header__inner">
@@ -43,6 +93,15 @@
           <button class="btn btn--ghost btn--sm" id="rmFile" style="flex-shrink:0"></button>
         </div>
       </div>
+
+      <!-- Template selector -->
+      <div id="templateSection" class="mt-16" style="display:none">
+        <p style="font-size:.8rem;color:var(--tx2);margin-bottom:8px">保存済みテンプレート:</p>
+        <select id="templateSelect" class="form-input" style="font-size:.85rem">
+          <option value="">テンプレートを選択...</option>
+        </select>
+      </div>
+
       <div class="flex mt-24" style="justify-content:flex-end">
         <button class="btn btn--primary" id="toS2" disabled data-i18n="send.next"></button>
       </div>
@@ -50,10 +109,49 @@
 
     <!-- Step 2: Place fields -->
     <div class="sc" id="step2" style="display:none">
-      <div class="pdf-editor">
+      <!-- Guidance -->
+      <div class="sign-info mb-16" id="step2Guide">
+        <span class="sign-info__icon" id="s2gIcon"></span>
+        <span class="sign-info__text" data-i18n="send.guide.fields"></span>
+      </div>
+
+      <!-- Signer selector -->
+      <div style="margin-bottom:12px">
+        <div class="signer-select" id="signerSelect">
+          <button class="signer-btn signer-btn--self" data-for="self">自分（送信者）</button>
+          <button class="signer-btn signer-btn--active" data-for="signer">署名者（相手）</button>
+        </div>
+        <p style="font-size:.75rem;color:var(--txm);margin-top:6px" id="signerHint" data-i18n="send.guide.signer"></p>
+      </div>
+
+      <!-- Field type toolbar -->
+      <div class="field-toolbar" id="fieldToolbar">
+        <button data-type="signature" title="署名欄">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#00e0a0" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          署名
+        </button>
+        <button data-type="stamp" title="電子印鑑">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><text x="12" y="16" text-anchor="middle" fill="#ef4444" stroke="none" font-size="10" font-weight="bold">印</text></svg>
+          印鑑
+        </button>
+        <button data-type="text" title="テキスト入力欄">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          テキスト
+        </button>
+        <button data-type="date" title="日付欄（自動入力）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          日付
+        </button>
+        <button data-type="checkbox" title="チェックボックス">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 22 4" stroke-width="2.5"/></svg>
+          確認
+        </button>
+      </div>
+
+      <div class="pdf-editor mt-16">
         <div class="pdf-editor__toolbar">
           <div class="pdf-editor__toolbar-group">
-            <button class="btn btn--primary btn--sm" id="addField"></button>
+            <span class="mono" style="font-size:.75rem;color:var(--tx2)" id="fieldCount">0 fields</span>
           </div>
           <div class="pdf-editor__toolbar-group">
             <button class="btn btn--ghost btn--sm" id="prevP" disabled></button>
@@ -63,6 +161,12 @@
         </div>
         <div class="pdf-editor__canvas-wrap" id="cWrap"><canvas id="pdfC"></canvas></div>
       </div>
+
+      <!-- Template save -->
+      <div class="template-bar">
+        <button class="btn btn--ghost btn--sm" id="saveTemplateBtn">テンプレートとして保存</button>
+      </div>
+
       <div class="flex mt-24" style="justify-content:space-between">
         <button class="btn btn--secondary" id="backS1" data-i18n="send.back"></button>
         <button class="btn btn--primary" id="toS3" disabled data-i18n="send.next"></button>
@@ -75,23 +179,41 @@
         <h3 class="mb-24" data-i18n="send.det"></h3>
         <div class="flex flex-col gap-16">
           <div class="form-group">
-            <label class="form-label" data-i18n="send.doc"></label>
+            <label class="form-label" for="docTitle" data-i18n="send.doc"></label>
             <input type="text" class="form-input" id="docTitle" data-i18n-attr="placeholder:send.doc.ph">
           </div>
+
+          <!-- Multi-signer section -->
           <div class="form-group">
-            <label class="form-label" data-i18n="send.email"></label>
-            <input type="email" class="form-input" id="signerEmail" data-i18n-attr="placeholder:send.email.ph">
+            <label class="form-label">署名者 <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0">(複数可)</span></label>
+            <p style="font-size:.75rem;color:var(--txm);margin-bottom:4px" data-i18n="send.guide.order"></p>
+            <div id="signerList" style="display:flex;flex-direction:column;gap:8px"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input type="email" class="form-input" id="newSignerEmail" placeholder="signer@example.com" style="flex:1">
+              <button class="btn btn--secondary btn--sm" id="addSignerBtn" type="button" style="flex-shrink:0">追加</button>
+            </div>
           </div>
+
           <div class="form-group">
-            <label class="form-label" data-i18n="send.msg"></label>
+            <label class="form-label" for="signerMsg" data-i18n="send.msg"></label>
             <textarea class="form-textarea" id="signerMsg" rows="3" data-i18n-attr="placeholder:send.msg.ph"></textarea>
           </div>
         </div>
       </div>
+
+      <!-- Bulk send (PRO) -->
+      <div class="card mt-16" id="bulkSendCard" style="display:none">
+        <h3 style="font-size:.9rem;margin-bottom:12px">一括送信 (CSV) <span style="font-size:.7rem;background:var(--ac);color:#fff;padding:2px 8px;border-radius:100px;margin-left:6px">PRO</span></h3>
+        <p style="font-size:.8rem;color:var(--tx2);margin-bottom:12px">CSVファイルで複数の宛先に一括送信。ヘッダーに「email」列が必要です。</p>
+        <input type="file" accept=".csv" id="csvInput" style="font-size:.85rem">
+        <button class="btn btn--primary btn--sm mt-12" id="bulkSendBtn" disabled>一括送信</button>
+      </div>
+
       <div class="flex mt-24" style="justify-content:space-between">
         <button class="btn btn--secondary" id="backS2" data-i18n="send.back"></button>
         <button class="btn btn--primary" id="sendBtn"></button>
       </div>
+      <p style="font-size:.75rem;color:var(--txm);text-align:center;margin-top:12px" data-i18n="send.guide.after"></p>
     </div>
   </div></section></main>
 
@@ -107,18 +229,55 @@
   <script src="/js/app.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const {I, Logo, t, applyI18n, api, toast, fmtSize, genId, CONFIG} = Signy;
+    const {I, Logo, t, applyI18n, api, toast, fmtSize, genId, esc, CONFIG} = Signy;
+    if(!Signy.isLoggedIn()){location.href='/login.html';return}
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('upIcon').innerHTML = I.upload;
     document.getElementById('rmFile').innerHTML = I.x;
-    document.getElementById('addField').innerHTML = `${I.plus}<span data-i18n="send.add"></span>`;
+    document.getElementById('s2gIcon').innerHTML = I.info;
     document.getElementById('prevP').innerHTML = I.chevL;
     document.getElementById('nextP').innerHTML = I.chevR;
     document.getElementById('sendBtn').innerHTML = `${I.send}<span data-i18n="send.submit"></span>`;
     applyI18n();
 
     let pdfFile=null, pdfDoc=null, curPage=1, totalPages=0, fields=[], scale=1.5;
+    let currentSigner = 'signer';
+    let dupFields = null; // Saved fields from duplicate flow
     const canvas=document.getElementById('pdfC'), ctx=canvas.getContext('2d'), wrap=document.getElementById('cWrap');
+
+    // Duplicate flow: pre-fill from sessionStorage
+    const dupParams = new URLSearchParams(location.search);
+    if(dupParams.get('dup')==='1'){
+      try{
+        const raw=sessionStorage.getItem('signy-dup');
+        if(raw){
+          const dup=JSON.parse(raw);
+          if(dup.title)document.getElementById('docTitle').value=dup.title;
+          if(dup.msg)document.getElementById('signerMsg').value=dup.msg;
+          if(dup.fields?.length)dupFields=dup.fields;
+          sessionStorage.removeItem('signy-dup');
+        }
+      }catch{}
+      toast(t('toast.dup.loaded'),'info');
+      history.replaceState(null,'','/send.html');
+    }
+
+    // Field type config
+    const FIELD_TYPES = {
+      signature: { label:'署名', w:200, h:60, icon:'pen' },
+      stamp:     { label:'印鑑', w:80,  h:80, icon:'stamp' },
+      text:      { label:'テキスト', w:180, h:32, icon:'text' },
+      date:      { label:'日付', w:140, h:32, icon:'date' },
+      checkbox:  { label:'確認', w:24,  h:24, icon:'check' },
+    };
+
+    const FIELD_ICONS = {
+      pen:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+      stamp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>',
+      text:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+      date:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
+    };
 
     function goStep(n){
       document.querySelectorAll('.sc').forEach(e=>e.style.display='none');
@@ -130,16 +289,28 @@
       applyI18n();
     }
 
+    // Signer toggle
+    document.querySelectorAll('.signer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.signer-btn').forEach(b => b.classList.remove('signer-btn--active'));
+        btn.classList.add('signer-btn--active');
+        currentSigner = btn.dataset.for;
+      });
+    });
+
     // Upload
     const zone=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
+    zone.addEventListener('click',()=>fi.click());
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('upload-zone--active')});
     zone.addEventListener('dragleave',()=>zone.classList.remove('upload-zone--active'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('upload-zone--active');if(e.dataTransfer.files.length)handle(e.dataTransfer.files[0])});
     fi.addEventListener('change',()=>{if(fi.files.length)handle(fi.files[0])});
 
     function handle(f){
-      if(f.type!=='application/pdf'){toast('PDFファイルを選択してください','error');return}
-      if(f.size>CONFIG.FREE_SIZE){toast(`${fmtSize(CONFIG.FREE_SIZE)}以下のファイルを選択してください`,'error');return}
+      if(f.type!=='application/pdf'){toast(t('toast.pdf.type'),'error');return}
+      const user = Signy.getUser();
+      const maxSize = user?.plan === 'pro' ? CONFIG.PRO_SIZE : CONFIG.FREE_SIZE;
+      if(f.size>maxSize){toast(`${fmtSize(maxSize)} ${t('toast.pdf.size')}`,'error');return}
       pdfFile=f;
       document.getElementById('fileInfo').style.display='block';
       document.getElementById('fIcon').innerHTML=I.fileText;
@@ -148,28 +319,46 @@
       document.getElementById('toS2').disabled=false;
       zone.style.display='none';
       document.getElementById('docTitle').value=f.name.replace(/\.pdf$/i,'');
+      loadTemplates();
     }
 
     document.getElementById('rmFile').addEventListener('click',()=>{
-      pdfFile=null;pdfDoc=null;
+      pdfFile=null;pdfDoc=null;fields=[];
+      document.querySelectorAll('.sign-field').forEach(e=>e.remove());
       document.getElementById('fileInfo').style.display='none';
       document.getElementById('toS2').disabled=true;
       zone.style.display='block';fi.value='';
     });
 
-    document.getElementById('toS2').addEventListener('click',async()=>{if(!pdfFile)return;goStep(2);await loadPdf()});
+    document.getElementById('toS2').addEventListener('click',async()=>{
+      if(!pdfFile)return;
+      const btn=document.getElementById('toS2');
+      btn.disabled=true;btn.textContent='読み込み中...';
+      goStep(2);
+      try{await loadPdf()}catch(e){toast(e.message||'PDF読み込みエラー','error');goStep(1)}
+      btn.disabled=false;btn.textContent=t('send.next');
+    });
     document.getElementById('backS1').addEventListener('click',()=>goStep(1));
     document.getElementById('toS3').addEventListener('click',()=>{
-      if(!fields.length){toast('署名欄を配置してください','error');return}
+      if(!fields.length){toast(t('toast.field.min'),'error');return}
       goStep(3);
     });
     document.getElementById('backS2').addEventListener('click',()=>goStep(2));
 
     async function loadPdf(){
+      fields=[];
+      document.querySelectorAll('.sign-field').forEach(e=>e.remove());
       const ab=await pdfFile.arrayBuffer();
       pdfDoc=await pdfjsLib.getDocument({data:ab}).promise;
       totalPages=pdfDoc.numPages;curPage=1;
-      await renderPage(curPage);updateNav();
+      await renderPage(curPage);updateNav();updateFieldCount();
+      // Auto-apply fields from duplicate flow
+      if(dupFields&&dupFields.length){
+        dupFields.forEach(f=>addField(f.type,{...f,x:(f.x||0)*scale,y:(f.y||0)*scale,w:(f.width||f.w||200)*scale,h:(f.height||f.h||60)*scale}));
+        dupFields=null;
+        toast(t('toast.dup.fields'),'success');
+        updateFieldCount();
+      }
     }
 
     async function renderPage(n){
@@ -185,30 +374,60 @@
       document.getElementById('nextP').disabled=curPage>=totalPages;
     }
 
+    function updateFieldCount(){
+      document.getElementById('fieldCount').textContent = `${fields.length} field${fields.length!==1?'s':''}`;
+      document.getElementById('toS3').disabled = fields.length === 0;
+    }
+
     document.getElementById('prevP').addEventListener('click',async()=>{if(curPage>1){curPage--;await renderPage(curPage);updateNav()}});
     document.getElementById('nextP').addEventListener('click',async()=>{if(curPage<totalPages){curPage++;await renderPage(curPage);updateNav()}});
 
-    // Add field
-    document.getElementById('addField').addEventListener('click',()=>{
-      const id=genId('sf'), f={id,page:curPage,x:50,y:50,w:200,h:60};
-      fields.push(f);createField(f);document.getElementById('toS3').disabled=false;
+    // Add field via toolbar buttons
+    document.getElementById('fieldToolbar').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-type]');
+      if (!btn) return;
+      const type = btn.dataset.type;
+      addField(type);
     });
 
-    function createField(f){
+    function addField(type, preset=null){
+      const cfg = FIELD_TYPES[type];
+      const id = genId('f');
+      const f = {
+        id, type, page: curPage,
+        x: preset?.x ?? 50, y: preset?.y ?? 50,
+        w: preset?.w ?? preset?.width ?? cfg.w, h: preset?.h ?? preset?.height ?? cfg.h,
+        for: preset?.for || currentSigner,
+        label: preset?.label || cfg.label,
+        required: preset?.required !== false,
+      };
+      fields.push(f);
+      createFieldEl(f);
+      updateFieldCount();
+    }
+
+    function createFieldEl(f){
       const el=document.createElement('div');
-      el.className='sign-field';el.id=`f-${f.id}`;
+      el.className=`sign-field sign-field--${f.type}${f.for==='self'?' sign-field--self':''}`;
+      el.id=`f-${f.id}`;
       el.style.cssText=`left:${f.x}px;top:${f.y}px;width:${f.w}px;height:${f.h}px`;
       el.dataset.page=f.page;
-      el.innerHTML=`<span class="sign-field__label">${I.pen} ${t('send.field')}</span><button class="sign-field__remove">${I.x}</button>`;
+
+      const iconKey = FIELD_TYPES[f.type].icon;
+      const forLabel = f.for === 'self' ? '(自分)' : '';
+      el.innerHTML=`<span class="sign-field__label">${FIELD_ICONS[iconKey]} ${esc(f.label)}${forLabel}</span><button class="sign-field__remove">&times;</button><div class="sign-field__resize"></div>`;
 
       el.querySelector('.sign-field__remove').addEventListener('click',e=>{
-        e.stopPropagation();fields=fields.filter(x=>x.id!==f.id);el.remove();
-        if(!fields.length)document.getElementById('toS3').disabled=true;
+        e.stopPropagation();
+        fields=fields.filter(x=>x.id!==f.id);el.remove();
+        updateFieldCount();
       });
 
       // Drag
       let drag=false,sx,sy,ox,oy;
-      const start=e=>{if(e.target.closest('.sign-field__remove'))return;e.preventDefault();drag=true;
+      const start=e=>{
+        if(e.target.closest('.sign-field__remove')||e.target.closest('.sign-field__resize'))return;
+        e.preventDefault();drag=true;
         const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=parseInt(el.style.left);oy=parseInt(el.style.top);
         document.addEventListener('mousemove',move);document.addEventListener('mouseup',stop);
         document.addEventListener('touchmove',move,{passive:false});document.addEventListener('touchend',stop);
@@ -222,27 +441,179 @@
         document.removeEventListener('touchmove',move);document.removeEventListener('touchend',stop);
       };
       el.addEventListener('mousedown',start);el.addEventListener('touchstart',start,{passive:false});
+
+      // Resize
+      const resizeEl = el.querySelector('.sign-field__resize');
+      let resizing=false, rsx, rsw, rsh;
+      resizeEl.addEventListener('mousedown', e=>{
+        e.stopPropagation();e.preventDefault();resizing=true;
+        rsx=e.clientX;rsw=f.w;rsh=f.h;
+        document.addEventListener('mousemove',rMove);document.addEventListener('mouseup',rStop);
+      });
+      const rMove=e=>{
+        if(!resizing)return;
+        const dx=e.clientX-rsx;
+        const nw=Math.max(24, rsw+dx);
+        // Keep aspect ratio for stamp/checkbox
+        if(f.type==='stamp'||f.type==='checkbox'){
+          f.w=nw;f.h=nw;
+        } else {
+          f.w=nw;f.h=Math.max(20, rsh);
+        }
+        el.style.width=f.w+'px';el.style.height=f.h+'px';
+      };
+      const rStop=()=>{resizing=false;document.removeEventListener('mousemove',rMove);document.removeEventListener('mouseup',rStop);};
+
       wrap.appendChild(el);
     }
 
-    // Send
+    // Templates
+    async function loadTemplates(){
+      try {
+        const data = await api('/templates');
+        if(data.templates?.length){
+          const sec = document.getElementById('templateSection');
+          sec.style.display = 'block';
+          const sel = document.getElementById('templateSelect');
+          sel.innerHTML = '<option value="">テンプレートを選択...</option>';
+          data.templates.forEach(t => {
+            sel.innerHTML += `<option value="${esc(t.id)}">${esc(t.name)} (${t.fields.length} fields)</option>`;
+          });
+        }
+      } catch{}
+    }
+
+    document.getElementById('templateSelect')?.addEventListener('change', async(e)=>{
+      const id = e.target.value;
+      if(!id) return;
+      try {
+        const data = await api(`/templates/${id}`);
+        if(data.fields){
+          // Clear existing fields
+          fields.forEach(f => document.getElementById(`f-${f.id}`)?.remove());
+          fields = [];
+          // Apply template fields
+          data.fields.forEach(tf => addField(tf.type, tf));
+          toast(t('toast.tmpl.applied'),'success');
+        }
+      }catch(e){ toast(e.message||'テンプレート読み込みエラー','error'); }
+    });
+
+    document.getElementById('saveTemplateBtn').addEventListener('click', async()=>{
+      if(!fields.length){ toast(t('toast.tmpl.need'),'error'); return; }
+      const name = prompt('テンプレート名を入力:', document.getElementById('docTitle').value || 'マイテンプレート');
+      if(!name) return;
+      try {
+        const templateFields = fields.map(f => ({
+          type:f.type, page:f.page,
+          x:Math.round(f.x/scale), y:Math.round(f.y/scale),
+          w:Math.round(f.w/scale), h:Math.round(f.h/scale),
+          for:f.for, label:f.label, required:f.required,
+        }));
+        await api('/templates', { method:'POST', body: JSON.stringify({ name, fields: templateFields }) });
+        toast(t('toast.tmpl.saved'),'success');
+      } catch(e) { toast(e.message||'保存エラー','error'); }
+    });
+
+    // Multi-signer management
+    let signersList = [];
+
+    document.getElementById('addSignerBtn').addEventListener('click', () => {
+      const email = document.getElementById('newSignerEmail').value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t('toast.email.invalid'),'error'); return; }
+      if (signersList.find(s => s.email === email)) { toast(t('toast.email.dup'),'error'); return; }
+      signersList.push({ email, order: signersList.length + 1 });
+      document.getElementById('newSignerEmail').value = '';
+      renderSignerList();
+    });
+
+    document.getElementById('newSignerEmail').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSignerBtn').click(); }
+    });
+
+    function renderSignerList() {
+      const list = document.getElementById('signerList');
+      list.innerHTML = '';
+      signersList.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2,#f5f5f3);border-radius:6px;font-size:.85rem';
+        el.innerHTML = `
+          <span style="font-weight:600;color:var(--ac);font-size:.75rem;width:20px">${s.order}.</span>
+          <span style="flex:1">${esc(s.email)}</span>
+          <button class="btn btn--ghost btn--sm" data-rm="${i}" style="padding:2px 6px;font-size:.7rem">x</button>
+        `;
+        el.querySelector('[data-rm]').addEventListener('click', () => {
+          signersList.splice(i, 1);
+          signersList.forEach((s, j) => s.order = j + 1);
+          renderSignerList();
+        });
+        list.appendChild(el);
+      });
+      // Show bulk send card for PRO users
+      const user = Signy.getUser();
+      if (user?.plan === 'pro') document.getElementById('bulkSendCard').style.display = 'block';
+    }
+
+    // CSV bulk send
+    const csvInput = document.getElementById('csvInput');
+    csvInput?.addEventListener('change', () => {
+      document.getElementById('bulkSendBtn').disabled = !csvInput.files.length;
+    });
+
+    document.getElementById('bulkSendBtn')?.addEventListener('click', async () => {
+      if (!csvInput.files.length || !pdfFile) return;
+      const title = document.getElementById('docTitle').value.trim();
+      const msg = document.getElementById('signerMsg').value.trim();
+      if (!title) { toast(t('toast.title.req'),'error'); return; }
+
+      const btn = document.getElementById('bulkSendBtn');
+      btn.disabled = true; btn.textContent = '送信中...';
+
+      try {
+        const csvText = await csvInput.files[0].text();
+        const fd = new FormData();
+        fd.append('pdf', pdfFile);
+        fd.append('title', title);
+        fd.append('message', msg);
+        fd.append('csv', csvText);
+        fd.append('signFields', JSON.stringify(fields.map(f => ({
+          type:f.type, page:f.page,
+          x:Math.round(f.x/scale), y:Math.round(f.y/scale),
+          width:Math.round(f.w/scale), height:Math.round(f.h/scale),
+          for:f.for, label:f.label, required:f.required,
+        }))));
+        const res = await api('/documents/bulk-send', { method:'POST', body:fd, headers:{} });
+        toast(`${res.sent}${t('toast.bulk.sent')}`, 'success');
+        setTimeout(() => location.href = '/', 2000);
+      } catch(e) {
+        toast(e.message || 'エラー', 'error');
+        btn.disabled = false; btn.textContent = '一括送信';
+      }
+    });
+
+    // Send (single / multi-signer)
     document.getElementById('sendBtn').addEventListener('click',async()=>{
-      const email=document.getElementById('signerEmail').value.trim();
       const title=document.getElementById('docTitle').value.trim();
       const msg=document.getElementById('signerMsg').value.trim();
-      if(!email||!email.includes('@')){toast('有効なメールアドレスを入力してください','error');return}
-      if(!title){toast('ドキュメント名を入力してください','error');return}
+      if(!title){toast(t('toast.title.req'),'error');return}
+      if(!signersList.length){toast(t('toast.signer.req'),'error');return}
 
       const btn=document.getElementById('sendBtn');btn.disabled=true;
       btn.querySelector('span').textContent=t('send.sending');
 
       try{
         const fd=new FormData();fd.append('pdf',pdfFile);fd.append('title',title);
-        fd.append('signerEmail',email);fd.append('message',msg);
-        fd.append('signFields',JSON.stringify(fields.map(f=>({page:f.page,x:Math.round(f.x/scale),y:Math.round(f.y/scale),width:Math.round(f.w/scale),height:Math.round(f.h/scale)}))));
+        fd.append('message',msg);
+        fd.append('signers',JSON.stringify(signersList));
+        fd.append('signFields',JSON.stringify(fields.map(f=>({
+          type:f.type, page:f.page,
+          x:Math.round(f.x/scale), y:Math.round(f.y/scale),
+          width:Math.round(f.w/scale), height:Math.round(f.h/scale),
+          for:f.for, label:f.label, required:f.required,
+        }))));
         const res=await api('/documents/upload',{method:'POST',body:fd,headers:{}});
         await api('/documents/send',{method:'POST',body:JSON.stringify({documentId:res.id})});
-        toast('署名依頼を送信しました','success');
+        toast(t('toast.sent'),'success');
         setTimeout(()=>location.href='/',1500);
       }catch(e){
         toast(e.message||t('err'),'error');btn.disabled=false;

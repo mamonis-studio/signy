@@ -51,6 +51,7 @@ code,.mono{font-family:var(--font-mono)}
 .btn--ghost{background:transparent;color:var(--tx2)}
 .btn--ghost:hover{color:var(--tx);background:var(--bg-h)}
 .btn--danger{background:var(--danger);color:#fff}
+.btn--danger:hover{background:#e11d48;box-shadow:0 0 16px rgba(244,63,94,.3);transform:translateY(-1px)}
 .btn--lg{padding:14px 32px;font-size:1rem;border-radius:var(--r-l)}
 .btn--sm{padding:6px 12px;font-size:.8rem}
 .btn--block{width:100%}
@@ -124,7 +125,9 @@ code,.mono{font-family:var(--font-mono)}
 .doc-item .act-btn{opacity:0;transition:opacity .2s ease}
 .doc-item:hover .act-btn{opacity:1}
 .dash-filter{border:1px solid var(--bd);transition:all .2s ease}
+.dash-filter:hover{border-color:var(--bd-l);color:var(--tx)}
 .dash-filter--active{background:var(--ac-s);color:var(--ac);border-color:rgba(0,224,160,.3)}
+.dash-filter--active:hover{background:rgba(0,224,160,.2);color:var(--ac)}
 .doc-item__title{font-weight:600;font-size:.9375rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .doc-item__signer{font-size:.8rem;color:var(--txm);font-family:var(--font-mono)}
 .doc-item__date{font-size:.8rem;color:var(--txm)}
@@ -180,7 +183,9 @@ code,.mono{font-family:var(--font-mono)}
 .sig-pad__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .sig-pad__tabs{display:flex;gap:3px}
 .sig-pad__tab{font-family:var(--font-mono);font-size:.7rem;font-weight:700;padding:6px 14px;border-radius:var(--r-s);border:1px solid var(--bd);background:transparent;color:var(--txm);cursor:pointer;transition:all .25s ease;text-transform:uppercase;letter-spacing:.06em}
+.sig-pad__tab:hover{color:var(--tx);border-color:var(--bd-l)}
 .sig-pad__tab--active{background:var(--ac);color:var(--bg);border-color:var(--ac)}
+.sig-pad__tab--active:hover{background:var(--ac-d);color:var(--bg)}
 .sig-pad__canvas-wrap{position:relative;border:1px solid var(--bd);border-radius:var(--r-m);overflow:hidden;background:#fff}
 .sig-pad__canvas-wrap canvas{width:100%;display:block;cursor:crosshair}
 .sig-pad__type-input{width:100%;padding:20px;font-size:1.5rem;font-family:'Dancing Script',cursive;background:#fff;color:#111;border:1px solid var(--bd);border-radius:var(--r-m);text-align:center;outline:none}

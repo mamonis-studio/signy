@@ -11,6 +11,15 @@ const Signy = (() => {
   /* ─── i18n ─── */
   const T = {
     ja: {
+      'meta.title.index':'Signy — 月500円で電子署名し放題',
+      'meta.title.send':'Signy - 署名依頼を送信',
+      'meta.title.sign':'Signy - 署名のお願い',
+      'meta.title.pricing':'Signy - 料金プラン',
+      'meta.title.login':'Signy — ログイン',
+      'meta.title.complete':'Signy — 署名完了',
+      'meta.desc.index':'月額500円で署名無制限。署名欄の位置指定、電子印鑑、テンプレート、ワークフロー、自動リマインダー。PDFはサーバーに渡しません。',
+      'meta.desc.send':'Signy - 署名依頼を送信。PDF上に署名欄を配置して、メールで送信。',
+      'meta.desc.sign':'Signy - 電子署名。ブラウザ内で完結する安全な署名。',
       'nav.dashboard':'ダッシュボード','nav.send':'新規送信','nav.pricing':'料金プラン',
       'nav.login':'ログイン','nav.logout':'ログアウト',
       'hero.title':'電子署名、<span>月500円で無制限</span>。',
@@ -105,8 +114,48 @@ const Signy = (() => {
       'empty.s1':'PDFを','empty.s1b':'アップロード','empty.s2':'署名欄を','empty.s2b':'配置','empty.s3':'メールで','empty.s3b':'署名依頼',
       'sign.pad.draw':'署名を描いてください','sign.pad.name':'名前を入力してください',
       'footer':'Signy — mamonis.studio','footer.priv':'プライバシーポリシー','footer.terms':'利用規約','footer.law':'特定商取引法に基づく表記',
+      'sign.loading':'読み込み中...','sign.wait.queue':'あなたの署名順: {queue}/{total}番目',
+      'sign.zoom.in.title':'拡大','sign.zoom.out.title':'縮小',
+      'send.fields.count':'{count}個のフィールド','send.field.self':'(自分)',
+      'compare.feature':'機能','compare.compA':'A社','compare.compB':'B社','compare.compC':'C社',
+      'compare.r.price':'月額料金','compare.r.count':'署名回数','compare.r.send':'送信料/件',
+      'compare.r.position':'署名欄の位置指定','compare.r.stamp':'電子印鑑','compare.r.template':'テンプレート',
+      'compare.r.workflow':'署名ワークフロー','compare.r.reminder':'自動リマインダー','compare.r.bulk':'一括送信',
+      'compare.r.audit':'監査ログ','compare.r.privacy':'プライバシー',
+      'compare.unlimited':'無制限','compare.local':'端末内処理','compare.server':'サーバー処理',
+      'compare.paid':'有料','compare.na':'--','compare.ok':'OK',
+      'compare.signy':'Signy PRO',
+      'send.tmpl.fields':'{count}個のフィールド',
+      'sign.page.short':'p.{page}',
+      'sign.stamp.default':'印',
+      'sign.field.filled':'[画像/署名]',
+      'dash.dl.suffix':'_署名済み.pdf',
+      'audit.title':'SIGNY - 電子署名証明書',
+      'audit.doc.title':'ドキュメント名:',
+      'audit.doc.id':'ドキュメントID:',
+      'audit.sender':'送信者:',
+      'audit.record':'署名記録',
+      'audit.signer':'署名者',
+      'audit.signer.value':'このドキュメントの署名者',
+      'audit.signed.at':'署名日時',
+      'audit.method':'署名方法',
+      'audit.method.value':'ブラウザベースの電子署名（クライアントサイド処理）',
+      'audit.verify':'検証',
+      'audit.verify.value':'pdf-libによりPDFに直接埋め込み',
+      'audit.fields':'入力済みフィールド',
+      'audit.footer1':'この証明書はSigny (mamonis.studio) により自動生成されました。',
+      'audit.footer2':'署名は署名者のブラウザ内で完結し、PDFデータはサーバーに送信されていません。',
     },
     en: {
+      'meta.title.index':'Signy — Unlimited E-Signatures at ¥500/mo',
+      'meta.title.send':'Signy - Send Signature Request',
+      'meta.title.sign':'Signy - Signature Request',
+      'meta.title.pricing':'Signy - Pricing',
+      'meta.title.login':'Signy — Login',
+      'meta.title.complete':'Signy — Signature Complete',
+      'meta.desc.index':'Unlimited signatures for ¥500/month. Field placement, e-stamps, templates, workflows, auto-reminders. PDFs never leave your browser.',
+      'meta.desc.send':'Signy - Send signature request. Place signature fields on PDF and send via email.',
+      'meta.desc.sign':'Signy - Electronic signature. Secure signing completed entirely in your browser.',
       'nav.dashboard':'Dashboard','nav.send':'New Request','nav.pricing':'Pricing',
       'nav.login':'Login','nav.logout':'Logout',
       'hero.title':'E-signatures, <span>unlimited at &yen;500/mo</span>.',
@@ -201,6 +250,37 @@ const Signy = (() => {
       'empty.s1':'Upload','empty.s1b':'PDF','empty.s2':'Place','empty.s2b':'Fields','empty.s3':'Send','empty.s3b':'Request',
       'sign.pad.draw':'Please draw your signature','sign.pad.name':'Please enter your name',
       'footer':'Signy — mamonis.studio','footer.priv':'Privacy Policy','footer.terms':'Terms of Service','footer.law':'Specified Commercial Transactions',
+      'sign.loading':'Loading...','sign.wait.queue':'Your turn: {queue}/{total}',
+      'sign.zoom.in.title':'Zoom in','sign.zoom.out.title':'Zoom out',
+      'send.fields.count':'{count} field(s)','send.field.self':'(Self)',
+      'compare.feature':'Feature','compare.compA':'Company A','compare.compB':'Company B','compare.compC':'Company C',
+      'compare.r.price':'Monthly fee','compare.r.count':'Signatures','compare.r.send':'Per-send fee',
+      'compare.r.position':'Field placement','compare.r.stamp':'E-Stamp','compare.r.template':'Templates',
+      'compare.r.workflow':'Workflow','compare.r.reminder':'Auto-reminders','compare.r.bulk':'Bulk send',
+      'compare.r.audit':'Audit trail','compare.r.privacy':'Privacy',
+      'compare.unlimited':'Unlimited','compare.local':'Client-side','compare.server':'Server-side',
+      'compare.paid':'Paid','compare.na':'--','compare.ok':'OK',
+      'compare.signy':'Signy PRO',
+      'send.tmpl.fields':'{count} field(s)',
+      'sign.page.short':'p.{page}',
+      'sign.stamp.default':'Seal',
+      'sign.field.filled':'[Image/Signature]',
+      'dash.dl.suffix':'_signed.pdf',
+      'audit.title':'SIGNY - Electronic Signature Certificate',
+      'audit.doc.title':'Document Title:',
+      'audit.doc.id':'Document ID:',
+      'audit.sender':'Sender:',
+      'audit.record':'Signature Record',
+      'audit.signer':'Signer',
+      'audit.signer.value':'This document signer',
+      'audit.signed.at':'Signed At',
+      'audit.method':'Method',
+      'audit.method.value':'Browser-based electronic signature (client-side)',
+      'audit.verify':'Verification',
+      'audit.verify.value':'Signature embedded directly into PDF via pdf-lib',
+      'audit.fields':'Fields Completed',
+      'audit.footer1':'This certificate was automatically generated by Signy (mamonis.studio).',
+      'audit.footer2':'The signature was processed entirely within the signer\'s browser. No PDF data was transmitted to the server.',
     }
   };
 
@@ -224,6 +304,14 @@ const Signy = (() => {
       });
     });
     document.querySelectorAll('.lang-toggle').forEach(b => b.textContent = lang === 'ja' ? 'EN' : 'JA');
+    // Update page title based on current path
+    const path = location.pathname;
+    const titleKey = path.includes('send') ? 'meta.title.send' :
+                     path.includes('sign') ? 'meta.title.sign' :
+                     path.includes('pricing') ? 'meta.title.pricing' :
+                     path.includes('login') ? 'meta.title.login' :
+                     path.includes('complete') ? 'meta.title.complete' : 'meta.title.index';
+    if (T[lang]?.[titleKey]) document.title = t(titleKey);
   }
 
   /* ─── API ─── */

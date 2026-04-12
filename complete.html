@@ -39,7 +39,8 @@
   <script src="/js/app.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const {I, Logo} = Signy;
+    const {I, Logo, t} = Signy;
+    document.title = t('meta.title.complete');
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('cIcon').innerHTML = I.checkCircle;
     document.getElementById('dlBtn').innerHTML = `${I.download}<span data-i18n="complete.dl"></span>`;

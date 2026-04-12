@@ -63,6 +63,7 @@
   <script>
   document.addEventListener('DOMContentLoaded', () => {
     const {I, Logo, api, setToken, isLoggedIn, toast, t, applyI18n} = Signy;
+    document.title = t('meta.title.login');
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('sentIcon').innerHTML = I.mail;
     document.getElementById('loginBtn').innerHTML = `${I.mail}<span data-i18n="auth.submit"></span>`;

@@ -59,6 +59,7 @@
   <script>
   document.addEventListener('DOMContentLoaded',()=>{
     const{Logo,applyI18n,isLoggedIn,getUser,t}=Signy;
+    document.title=t('meta.title.pricing');
     document.getElementById('logo').innerHTML=`${Logo}<span class="header__logo-text">Signy</span>`;
     applyI18n();
     document.querySelectorAll('.feat-list li').forEach(li=>{li.style.padding='5px 0 5px 20px';li.style.position='relative';

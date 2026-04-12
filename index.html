@@ -52,11 +52,11 @@
         <div style="overflow-x:auto;border-radius:var(--r-l);border:1px solid var(--bd)">
           <table style="width:100%;min-width:680px;border-collapse:collapse;font-size:.85rem">
             <thead><tr>
-              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em;background:var(--bg-s)">機能</th>
-              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--ac);background:rgba(0,224,160,.06);font-weight:700;color:var(--ac);font-family:var(--font-mono);font-size:.8rem">Signy PRO</th>
-              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)">A社</th>
-              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)">B社</th>
-              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)">C社</th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em;background:var(--bg-s)" data-i18n="compare.feature"></th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--ac);background:rgba(0,224,160,.06);font-weight:700;color:var(--ac);font-family:var(--font-mono);font-size:.8rem" data-i18n="compare.signy"></th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)" data-i18n="compare.compA"></th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)" data-i18n="compare.compB"></th>
+              <th style="padding:14px 16px;text-align:left;border-bottom:2px solid var(--bd);font-size:.75rem;color:var(--txm);font-family:var(--font-mono);background:var(--bg-s)" data-i18n="compare.compC"></th>
             </tr></thead>
             <tbody id="compBody"></tbody>
           </table>
@@ -119,6 +119,7 @@
   <script>
   document.addEventListener('DOMContentLoaded', () => {
     const {I, Logo, esc, fmtDate, isLoggedIn, clearToken, api, toast, t} = Signy;
+    document.title = t('meta.title.index');
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('newBtn').innerHTML = `${I.plus}<span data-i18n="dash.new"></span>`;
     document.getElementById('emptyIcon').innerHTML = I.fileText;
@@ -146,25 +147,34 @@
         <p class="feature-card__desc" data-i18n="${f.d}"></p>
       </div>`).join('');
 
-    // Comparison table
-    const rows = [
-      ['月額料金','<strong style="color:var(--ac)">550円</strong>','9,680円','1,078円','11,000円'],
-      ['署名回数','<strong style="color:var(--ac)">無制限</strong>','無制限','月10通','無制限'],
-      ['送信料/件','<strong style="color:var(--ac)">0円</strong>','110円','220円','220円'],
-      ['署名欄の位置指定','OK','OK','OK','OK'],
-      ['電子印鑑','OK','OK','--','--'],
-      ['テンプレート','OK','OK','OK','OK'],
-      ['署名ワークフロー','OK','OK','--','有料'],
-      ['自動リマインダー','OK','OK','--','OK'],
-      ['一括送信','OK','OK','--','有料'],
-      ['監査ログ','OK','OK','OK','OK'],
-      ['プライバシー','<strong style="color:var(--ac)">端末内処理</strong>','サーバー処理','サーバー処理','サーバー処理'],
+    // Comparison table (i18n-aware)
+    const compRows = [
+      ['compare.r.price','<strong style="color:var(--ac)">&yen;550</strong>','&yen;9,680','&yen;1,078','&yen;11,000'],
+      ['compare.r.count','compare.unlimited','compare.unlimited','10/mo','compare.unlimited'],
+      ['compare.r.send','<strong style="color:var(--ac)">&yen;0</strong>','&yen;110','&yen;220','&yen;220'],
+      ['compare.r.position','compare.ok','compare.ok','compare.ok','compare.ok'],
+      ['compare.r.stamp','compare.ok','compare.ok','compare.na','compare.na'],
+      ['compare.r.template','compare.ok','compare.ok','compare.ok','compare.ok'],
+      ['compare.r.workflow','compare.ok','compare.ok','compare.na','compare.paid'],
+      ['compare.r.reminder','compare.ok','compare.ok','compare.na','compare.ok'],
+      ['compare.r.bulk','compare.ok','compare.ok','compare.na','compare.paid'],
+      ['compare.r.audit','compare.ok','compare.ok','compare.ok','compare.ok'],
+      ['compare.r.privacy','compare.local','compare.server','compare.server','compare.server'],
     ];
-    document.getElementById('compBody').innerHTML = rows.map(r => `<tr>${r.map((c,i) =>
-      `<td style="padding:12px 16px;border-bottom:1px solid var(--bd);${i===0?'font-family:var(--font-mono);font-size:.8rem;font-weight:600;color:var(--tx2)':''}${i===1?'background:rgba(0,224,160,.03);font-weight:600;color:var(--tx)':'color:var(--txm)'}">${c}</td>`
-    ).join('')}</tr>`).join('');
+    function renderCompTable(){
+      document.getElementById('compBody').innerHTML = compRows.map(r => `<tr>${r.map((c,i) => {
+        let val = c.startsWith('compare.') ? t(c) : c;
+        if(i===1 && c==='compare.local') val=`<strong style="color:var(--ac)">${val}</strong>`;
+        if(i===1 && c==='compare.unlimited') val=`<strong style="color:var(--ac)">${val}</strong>`;
+        return `<td style="padding:12px 16px;border-bottom:1px solid var(--bd);${i===0?'font-family:var(--font-mono);font-size:.8rem;font-weight:600;color:var(--tx2)':''}${i===1?'background:rgba(0,224,160,.03);font-weight:600;color:var(--tx)':'color:var(--txm)'}">${val}</td>`;
+      }).join('')}</tr>`).join('');
+    }
+    renderCompTable();
 
     Signy.applyI18n();
+
+    // Re-render comparison table on language toggle
+    document.querySelectorAll('.lang-toggle').forEach(b => b.addEventListener('click', () => setTimeout(renderCompTable, 10)));
 
     if (isLoggedIn()) {
       document.getElementById('landing').style.display = 'none';
@@ -269,7 +279,7 @@
           if(!r.ok)throw new Error('Download failed');
           const blob=await r.blob();
           const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-          a.download=(allDocs.find(d=>d.id===id)?.title||'document')+'_signed.pdf';
+          a.download=(allDocs.find(d=>d.id===id)?.title||'document')+t('dash.dl.suffix');
           a.click();URL.revokeObjectURL(a.href);
         } else if(action==='duplicate'){
           const data=await api(`/documents/${id}/duplicate`,{method:'POST'});

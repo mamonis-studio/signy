@@ -49,9 +49,13 @@
     /* Signer selector */
     .signer-select { display:flex; gap:6px; margin-bottom:12px; }
     .signer-btn { padding:6px 14px; font-size:.75rem; font-weight:600; border-radius:100px; border:1.5px solid var(--bd); background:var(--bg); color:var(--tx); cursor:pointer; font-family:inherit; transition:all .15s; }
+    .signer-btn:hover { border-color:var(--ac); color:var(--ac); }
     .signer-btn--active { background:var(--ac); color:#fff; border-color:var(--ac); }
+    .signer-btn--active:hover { background:var(--ac-d); color:#fff; }
     .signer-btn--self { border-color:#666; }
-    .signer-btn--self.signer-btn--active { background:#333; border-color:#333; }
+    .signer-btn--self:hover { border-color:#888; color:var(--tx); }
+    .signer-btn--self.signer-btn--active { background:#333; border-color:#333; color:#fff; }
+    .signer-btn--self.signer-btn--active:hover { background:#444; color:#fff; }
 
     /* Template actions */
     .template-bar { display:flex; gap:8px; margin-top:12px; }
@@ -151,7 +155,7 @@
       <div class="pdf-editor mt-16">
         <div class="pdf-editor__toolbar">
           <div class="pdf-editor__toolbar-group">
-            <span class="mono" style="font-size:.75rem;color:var(--tx2)" id="fieldCount">0 fields</span>
+            <span class="mono" style="font-size:.75rem;color:var(--tx2)" id="fieldCount"></span>
           </div>
           <div class="pdf-editor__toolbar-group">
             <button class="btn btn--ghost btn--sm" id="prevP" disabled></button>
@@ -231,6 +235,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const {I, Logo, t, applyI18n, api, toast, fmtSize, genId, esc, CONFIG} = Signy;
     if(!Signy.isLoggedIn()){location.href='/login.html';return}
+    document.title = t('meta.title.send');
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('upIcon').innerHTML = I.upload;
     document.getElementById('rmFile').innerHTML = I.x;
@@ -262,14 +267,15 @@
       history.replaceState(null,'','/send.html');
     }
 
-    // Field type config
+    // Field type config (labels use i18n keys)
     const FIELD_TYPES = {
-      signature: { label:'署名', w:200, h:60, icon:'pen' },
-      stamp:     { label:'印鑑', w:80,  h:80, icon:'stamp' },
-      text:      { label:'テキスト', w:180, h:32, icon:'text' },
-      date:      { label:'日付', w:140, h:32, icon:'date' },
-      checkbox:  { label:'確認', w:24,  h:24, icon:'check' },
+      signature: { labelKey:'send.field.sig', w:200, h:60, icon:'pen' },
+      stamp:     { labelKey:'send.field.stamp', w:80,  h:80, icon:'stamp' },
+      text:      { labelKey:'send.field.text', w:180, h:32, icon:'text' },
+      date:      { labelKey:'send.field.date', w:140, h:32, icon:'date' },
+      checkbox:  { labelKey:'send.field.check', w:24,  h:24, icon:'check' },
     };
+    function getFieldLabel(type){ return t(FIELD_TYPES[type].labelKey); }
 
     const FIELD_ICONS = {
       pen:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
@@ -375,7 +381,7 @@
     }
 
     function updateFieldCount(){
-      document.getElementById('fieldCount').textContent = `${fields.length} field${fields.length!==1?'s':''}`;
+      document.getElementById('fieldCount').textContent = t('send.fields.count').replace('{count}', fields.length);
       document.getElementById('toS3').disabled = fields.length === 0;
     }
 
@@ -398,7 +404,7 @@
         x: preset?.x ?? 50, y: preset?.y ?? 50,
         w: preset?.w ?? preset?.width ?? cfg.w, h: preset?.h ?? preset?.height ?? cfg.h,
         for: preset?.for || currentSigner,
-        label: preset?.label || cfg.label,
+        label: preset?.label || getFieldLabel(type),
         required: preset?.required !== false,
       };
       fields.push(f);
@@ -414,7 +420,7 @@
       el.dataset.page=f.page;
 
       const iconKey = FIELD_TYPES[f.type].icon;
-      const forLabel = f.for === 'self' ? '(自分)' : '';
+      const forLabel = f.for === 'self' ? t('send.field.self') : '';
       el.innerHTML=`<span class="sign-field__label">${FIELD_ICONS[iconKey]} ${esc(f.label)}${forLabel}</span><button class="sign-field__remove">&times;</button><div class="sign-field__resize"></div>`;
 
       el.querySelector('.sign-field__remove').addEventListener('click',e=>{
@@ -477,7 +483,7 @@
           const sel = document.getElementById('templateSelect');
           sel.innerHTML = `<option value="">${t('send.tmpl.select')}</option>`;
           data.templates.forEach(tmpl => {
-            sel.innerHTML += `<option value="${esc(tmpl.id)}">${esc(tmpl.name)} (${tmpl.fields.length} fields)</option>`;
+            sel.innerHTML += `<option value="${esc(tmpl.id)}">${esc(tmpl.name)} (${t('send.tmpl.fields').replace('{count}', tmpl.fields.length)})</option>`;
           });
         }
       } catch{}

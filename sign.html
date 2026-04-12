@@ -21,7 +21,8 @@
     .stamp-controls { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
     .stamp-controls input { width:100%; padding:10px 12px; font-size:1rem; border:1.5px solid var(--bd); border-radius:6px; text-align:center; font-family:'Noto Serif JP',serif; font-weight:700; background:var(--bg-s); color:var(--tx); }
     .stamp-style-row { display:flex; gap:6px; }
-    .stamp-style-btn { flex:1; padding:8px; font-size:.75rem; font-weight:600; border:1.5px solid var(--bd); border-radius:6px; background:var(--bg); color:var(--tx); cursor:pointer; font-family:inherit; text-align:center; }
+    .stamp-style-btn { flex:1; padding:8px; font-size:.75rem; font-weight:600; border:1.5px solid var(--bd); border-radius:6px; background:var(--bg); color:var(--tx); cursor:pointer; font-family:inherit; text-align:center; transition:all .15s; }
+    .stamp-style-btn:hover { border-color:#ef4444; color:#ef4444; }
     .stamp-style-btn.active { border-color:#ef4444; color:#ef4444; background:rgba(239,68,68,.06); }
 
     /* Field overlays on signer view */
@@ -57,7 +58,7 @@
   <main>
     <div class="text-center" style="padding:100px 24px" id="signLoading">
       <div class="loader loader--lg" style="margin:0 auto 16px"></div>
-      <p class="text-muted">Loading...</p>
+      <p class="text-muted" data-i18n="sign.loading"></p>
     </div>
 
     <div class="complete" id="signExpired" style="display:none">
@@ -115,9 +116,9 @@
         <div class="pdf-editor__toolbar">
           <div class="pdf-editor__toolbar-group"><span class="mono" style="font-size:.8rem;color:var(--tx2)" id="sPageInd"></span></div>
           <div class="pdf-editor__toolbar-group">
-            <button class="btn btn--ghost btn--sm" id="zoomOut" title="縮小" style="font-size:.75rem;padding:4px 8px">-</button>
+            <button class="btn btn--ghost btn--sm" id="zoomOut" data-i18n-attr="title:sign.zoom.out.title" style="font-size:.75rem;padding:4px 8px">-</button>
             <span class="mono" style="font-size:.7rem;color:var(--txm)" id="zoomLevel">100%</span>
-            <button class="btn btn--ghost btn--sm" id="zoomIn" title="拡大" style="font-size:.75rem;padding:4px 8px">+</button>
+            <button class="btn btn--ghost btn--sm" id="zoomIn" data-i18n-attr="title:sign.zoom.in.title" style="font-size:.75rem;padding:4px 8px">+</button>
           </div>
           <div class="pdf-editor__toolbar-group">
             <button class="btn btn--ghost btn--sm" id="sPrev" disabled></button>
@@ -130,7 +131,7 @@
       <!-- Signature pad (shown when clicking signature/stamp field) -->
       <div class="sig-pad mb-24" id="sigPad" style="display:none">
         <div class="sig-pad__header">
-          <h3 style="font-size:1rem" id="sigPadTitle">Signature</h3>
+          <h3 style="font-size:1rem" id="sigPadTitle" data-i18n="sign.signature"></h3>
           <div class="sig-pad__tabs" id="sigPadTabs">
             <button class="sig-pad__tab sig-pad__tab--active" data-mode="draw" data-i18n="sign.draw"></button>
             <button class="sig-pad__tab" data-mode="type" data-i18n="sign.type"></button>
@@ -184,6 +185,7 @@
   <script>
   document.addEventListener('DOMContentLoaded', () => {
     const {I, Logo, t, applyI18n, api, toast, esc} = Signy;
+    document.title = t('meta.title.sign');
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('siIcon').innerHTML = I.info;
     document.getElementById('sPrev').innerHTML = I.chevL;
@@ -226,7 +228,7 @@
         const d=await r.json();
         if(d.error){
           if(d.error==='waiting'){
-            document.getElementById('waitDetail').textContent=`あなたの署名順: ${d.queue}/${d.total}番目`;
+            document.getElementById('waitDetail').textContent=t('sign.wait.queue').replace('{queue}',d.queue).replace('{total}',d.total);
             show('signWaiting');
           } else if(d.error==='already_signed') show('signDone');
           else if(d.error==='cancelled') show('signCancelled');
@@ -287,7 +289,7 @@
           });
           el.appendChild(inp);
         } else if(f.type==='date'){
-          const dateStr=new Date().toLocaleDateString('ja-JP');
+          const dateStr=new Date().toLocaleDateString(Signy.lang==='ja'?'ja-JP':'en-US');
           fieldValues[i]={type:'date',value:dateStr};
           el.innerHTML=`<span class="sf-overlay__label" style="color:#eab308;font-size:.75rem">${dateStr}</span>`;
           el.title=t('sign.date.auto');
@@ -324,7 +326,7 @@
         if(f.for==='self')return;
         const item=document.createElement('div');
         item.className='field-checklist__item';item.id=`cl-${i}`;
-        item.innerHTML=`<span class="field-checklist__dot field-checklist__dot--pending"></span><span>${esc(f.label||f.type)} (p.${f.page})</span>`;
+        item.innerHTML=`<span class="field-checklist__dot field-checklist__dot--pending"></span><span>${esc(f.label||f.type)} (${t('sign.page.short').replace('{page}',f.page)})</span>`;
         cl.appendChild(item);
       });
     }
@@ -405,7 +407,7 @@
     });
 
     function renderStamp(){
-      const name=stampInput.value.trim()||'印';
+      const name=stampInput.value.trim()||t('sign.stamp.default');
       const s=stampCanvas.width;
       stampCtx.clearRect(0,0,s,s);
 
@@ -544,52 +546,53 @@
         const lineColor = PDFLib.rgb(0.85, 0.85, 0.85);
         let ay = 780;
 
-        auditPage.drawText('SIGNY - Electronic Signature Certificate', { x:50, y:ay, size:16, font:hFont, color:dark }); ay-=8;
+        safeDraw(auditPage, t('audit.title'), { x:50, y:ay, size:16, font:hFont, color:dark }); ay-=8;
         auditPage.drawRectangle({ x:50, y:ay, width:495, height:1, color:green }); ay-=28;
 
-        auditPage.drawText('Document Title:', { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=16;
-        safeDraw(auditPage, docData.title || 'Untitled', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=28;
+        safeDraw(auditPage, t('audit.doc.title'), { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=16;
+        safeDraw(auditPage, docData.title || '-', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=28;
 
-        auditPage.drawText('Document ID:', { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=14;
+        safeDraw(auditPage, t('audit.doc.id'), { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=14;
         auditPage.drawText(docId, { x:50, y:ay, size:8, font:bFont, color:gray }); ay-=24;
 
-        auditPage.drawText('Sender:', { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=14;
+        safeDraw(auditPage, t('audit.sender'), { x:50, y:ay, size:9, font:bFont, color:gray }); ay-=14;
         safeDraw(auditPage, docData.ownerEmail || '-', { x:50, y:ay, size:10, font:bFont, color:dark }); ay-=28;
 
         auditPage.drawRectangle({ x:50, y:ay+6, width:495, height:1, color:lineColor }); ay-=12;
-        auditPage.drawText('Signature Record', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=24;
+        safeDraw(auditPage, t('audit.record'), { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=24;
 
         const signedAt = new Date().toISOString();
+        const dateLocale = Signy.lang==='ja'?'ja-JP':'en-US';
         const sigRecord = [
-          ['Signer', 'This document signer'],
-          ['Signed At', new Date().toLocaleString('ja-JP', {timeZone:'Asia/Tokyo'})],
-          ['Method', 'Browser-based electronic signature (client-side)'],
-          ['Verification', 'Signature embedded directly into PDF via pdf-lib'],
+          [t('audit.signer'), t('audit.signer.value')],
+          [t('audit.signed.at'), new Date().toLocaleString(dateLocale, {timeZone:'Asia/Tokyo'})],
+          [t('audit.method'), t('audit.method.value')],
+          [t('audit.verify'), t('audit.verify.value')],
         ];
         for(const [label, value] of sigRecord){
-          auditPage.drawText(label + ':', { x:50, y:ay, size:9, font:hFont, color:gray });
-          auditPage.drawText(value, { x:180, y:ay, size:9, font:bFont, color:dark });
+          safeDraw(auditPage, label + ':', { x:50, y:ay, size:9, font:hFont, color:gray });
+          safeDraw(auditPage, value, { x:180, y:ay, size:9, font:bFont, color:dark });
           ay -= 18;
         }
 
         ay -= 12;
         auditPage.drawRectangle({ x:50, y:ay+6, width:495, height:1, color:lineColor }); ay-=12;
-        auditPage.drawText('Fields Completed', { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=20;
+        safeDraw(auditPage, t('audit.fields'), { x:50, y:ay, size:12, font:hFont, color:dark }); ay-=20;
 
         for(const [idxStr2, val2] of Object.entries(fieldValues)){
           const idx2=parseInt(idxStr2);
           const f2=docData.signFields[idx2];
           if(!f2||f2.for==='self') continue;
-          const vStr = val2.dataUrl ? '[Image/Signature]' : (val2.value || '-');
-          safeDraw(auditPage, `${f2.label||f2.type} (p.${f2.page}): ${vStr}`, { x:60, y:ay, size:8, font:bFont, color:gray });
+          const vStr = val2.dataUrl ? t('sign.field.filled') : (val2.value || '-');
+          safeDraw(auditPage, `${f2.label||f2.type} (${t('sign.page.short').replace('{page}',f2.page)}): ${vStr}`, { x:60, y:ay, size:8, font:bFont, color:gray });
           ay -= 14;
           if(ay < 60) break;
         }
 
         ay -= 16;
         auditPage.drawRectangle({ x:50, y:ay+6, width:495, height:1, color:lineColor }); ay-=12;
-        auditPage.drawText('This certificate was automatically generated by Signy (mamonis.studio).', { x:50, y:ay, size:7, font:bFont, color:gray }); ay-=12;
-        auditPage.drawText('The signature was processed entirely within the signer\'s browser. No PDF data was transmitted to the server.', { x:50, y:ay, size:7, font:bFont, color:gray });
+        safeDraw(auditPage, t('audit.footer1'), { x:50, y:ay, size:7, font:bFont, color:gray }); ay-=12;
+        safeDraw(auditPage, t('audit.footer2'), { x:50, y:ay, size:7, font:bFont, color:gray });
 
         const signedPdfBytes=await pdfLibDoc.save();
         const fd=new FormData();

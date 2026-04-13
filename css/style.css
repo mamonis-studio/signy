@@ -23,7 +23,7 @@ body::before{content:'';position:fixed;inset:0;opacity:.03;pointer-events:none;z
 h1,h2,h3,h4{font-family:var(--font-head);font-weight:700;letter-spacing:-.02em;line-height:1.2}
 h1{font-size:2.5rem}h2{font-size:1.75rem}h3{font-size:1.2rem}
 p{color:var(--tx2)}
-a{color:var(--ac);text-decoration:none;transition:color var(--tr)}a:hover{color:var(--ac-d)}
+a{color:var(--ac);text-decoration:none;transition:color var(--tr)}a:hover{color:var(--ac-d)}a:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:2px}
 a.btn{color:inherit}a.btn:hover{color:inherit}
 code,.mono{font-family:var(--font-mono)}
 ::selection{background:var(--ac);color:var(--bg)}
@@ -40,6 +40,7 @@ code,.mono{font-family:var(--font-mono)}
 .header__nav{display:flex;align-items:center;gap:6px}
 .header__link{font-family:var(--font-sans);font-size:.85rem;font-weight:500;color:var(--tx2);padding:7px 13px;border-radius:var(--r-m);transition:all var(--tr)}
 .header__link:hover{color:var(--tx);background:var(--bg-h)}
+.header__link:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-sans);font-size:.875rem;font-weight:600;padding:10px 20px;border-radius:var(--r-m);border:none;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);text-decoration:none;white-space:nowrap;line-height:1.4;position:relative;color:var(--tx)}
@@ -57,6 +58,9 @@ code,.mono{font-family:var(--font-mono)}
 .btn--sm{padding:6px 12px;font-size:.8rem}
 .btn--block{width:100%}
 .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.btn--secondary:focus-visible{outline-color:var(--tx2)}
+.btn--danger:focus-visible{outline-color:var(--danger)}
 
 /* Cards */
 .card{background:var(--bg-s);border:1px solid var(--bd);border-radius:var(--r-l);padding:24px;transition:all .3s cubic-bezier(.4,0,.2,1)}
@@ -66,7 +70,8 @@ code,.mono{font-family:var(--font-mono)}
 .form-group{display:flex;flex-direction:column;gap:6px}
 .form-label{font-size:.75rem;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-mono)}
 .form-input,.form-textarea,.form-select{font-family:var(--font-sans);font-size:.9375rem;padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-m);color:var(--tx);transition:all var(--tr);outline:none;width:100%}
-.form-input:focus,.form-textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g)}
+.form-input:focus,.form-textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g);outline:none}
+.form-input:focus-visible,.form-textarea:focus-visible,.form-select:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
 .form-input::placeholder,.form-textarea::placeholder{color:var(--txm)}
 .form-textarea{resize:vertical;min-height:100px}
 
@@ -167,7 +172,7 @@ code,.mono{font-family:var(--font-mono)}
 .sign-field:hover{border-color:var(--ac-d);background:rgba(0,224,160,.1);box-shadow:0 0 16px rgba(0,224,160,.1)}
 .sign-field--self{border-color:var(--info);background:rgba(56,189,248,.06)}
 .sign-field--self:hover{border-color:#60a5fa;background:rgba(56,189,248,.1)}
-.sign-field__label{font-family:var(--font-mono);font-size:.65rem;color:var(--ac);text-transform:uppercase;letter-spacing:.05em;pointer-events:none;display:flex;align-items:center;gap:6px}
+.sign-field__label{font-family:var(--font-mono);font-size:.75rem;color:var(--ac);text-transform:uppercase;letter-spacing:.05em;pointer-events:none;display:flex;align-items:center;gap:6px}
 .sign-field__label svg{width:14px;height:14px}
 .sign-field__remove{position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:var(--danger);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;opacity:0;transition:opacity var(--tr);font-size:12px}
 .sign-field:hover .sign-field__remove{opacity:1}
@@ -187,6 +192,7 @@ code,.mono{font-family:var(--font-mono)}
 .sig-pad__tab:hover{color:var(--tx);border-color:var(--bd-l)}
 .sig-pad__tab--active{background:var(--ac);color:var(--bg);border-color:var(--ac)}
 .sig-pad__tab--active:hover{background:var(--ac-d);color:var(--bg)}
+.sig-pad__tab:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 .sig-pad__canvas-wrap{position:relative;border:1px solid var(--bd);border-radius:var(--r-m);overflow:hidden;background:#fff}
 .sig-pad__canvas-wrap canvas{width:100%;display:block;cursor:crosshair}
 .sig-pad__type-input{width:100%;padding:20px;font-size:1.5rem;font-family:'Dancing Script',cursive;background:#fff;color:#111;border:1px solid var(--bd);border-radius:var(--r-m);text-align:center;outline:none}
@@ -231,6 +237,7 @@ code,.mono{font-family:var(--font-mono)}
 
 .lang-toggle{font-family:var(--font-mono);font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:var(--r-s);border:1px solid var(--bd);background:transparent;color:var(--txm);cursor:pointer;transition:all var(--tr);text-transform:uppercase;letter-spacing:.04em}
 .lang-toggle:hover{color:var(--tx);border-color:var(--bd-l)}
+.lang-toggle:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
 .text-center{text-align:center}.text-accent{color:var(--ac)}.text-muted{color:var(--txm)}
@@ -255,9 +262,14 @@ code,.mono{font-family:var(--font-mono)}
   .header__nav{gap:4px}.header__link{padding:6px 10px;font-size:.8rem}
   .hero__trust{flex-wrap:wrap;gap:16px}
   .feature-card{animation-delay:0s!important}
+  .pdf-editor__toolbar-group .btn--sm{min-width:40px;min-height:40px;padding:8px 12px!important;font-size:.9rem!important}
 }
 @media(max-width:480px){
+  h1{font-size:1.8rem}h2{font-size:1.5rem}h3{font-size:1.1rem}
   .hero__title{font-size:2rem}.container{padding:0 16px}.card{padding:16px}
   .hero__actions{flex-direction:column;align-items:center}
   .hero__trust{flex-direction:column;align-items:center}
+  .pdf-editor__canvas-wrap{min-height:350px;padding:12px}
+  .footer{padding:32px 16px}
+  .footer__links{flex-wrap:wrap;gap:12px}
 }

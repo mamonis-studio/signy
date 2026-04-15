@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#00e0a0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Noto+Serif+JP:wght@700;900&display=swap">
@@ -272,8 +274,17 @@
       if(!docData?.signFields)return;
       const w=document.getElementById('sCWrap');
       docData.signFields.forEach((f,i)=>{
-        if(f.for==='self') return; // Skip sender-only fields
         if(f.page!==curPage) return;
+        // Readonly fields: show dimmed placeholder so signer sees where others will sign
+        if(f._readonly){
+          const ro=document.createElement('div');
+          ro.className='sf-overlay sf-overlay--readonly';
+          ro.style.cssText=`left:${f.x*scale}px;top:${f.y*scale}px;width:${f.width*scale}px;height:${f.height*scale}px;pointer-events:none;opacity:.35;border:1px dashed #888;background:rgba(128,128,128,.06);border-radius:3px;display:flex;align-items:center;justify-content:center`;
+          const who = f.for === 'self' ? t('send.field.self') : (f.for?.startsWith('signer:') ? `#${parseInt(f.for.split(':')[1])+1}` : '');
+          ro.innerHTML=`<span style="font-size:.65rem;color:#888;font-weight:600">${esc(who)}</span>`;
+          w.appendChild(ro);
+          return;
+        }
         const el=document.createElement('div');
         el.className=`sf-overlay sf-overlay--${f.type}${fieldValues[i]?' sf-overlay--filled':''}`;
         el.style.cssText=`left:${f.x*scale}px;top:${f.y*scale}px;width:${f.width*scale}px;height:${f.height*scale}px`;
@@ -323,7 +334,7 @@
       const cl=document.getElementById('fieldChecklist');
       cl.innerHTML='';
       docData.signFields.forEach((f,i)=>{
-        if(f.for==='self')return;
+        if(f._readonly)return;
         const item=document.createElement('div');
         item.className='field-checklist__item';item.id=`cl-${i}`;
         item.innerHTML=`<span class="field-checklist__dot field-checklist__dot--pending"></span><span>${esc(f.label||f.type)} (${t('sign.page.short').replace('{page}',f.page)})</span>`;
@@ -335,7 +346,7 @@
       if(!docData?.signFields)return;
       let filled=0,total=0;
       docData.signFields.forEach((f,i)=>{
-        if(f.for==='self')return;
+        if(f._readonly)return;
         total++;
         const item=document.getElementById(`cl-${i}`);
         if(!item)return;
@@ -509,10 +520,12 @@
         const hFont = await pdfLibDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
         const bFont = await pdfLibDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
+        // Note: PDF rotation is not yet supported. For rotated PDFs, fields may shift.
+        // We pre-check rotation and warn the user (see warning earlier in flow).
         for(const [idxStr, val] of Object.entries(fieldValues)){
           const idx=parseInt(idxStr);
           const f=docData.signFields[idx];
-          if(!f||f.for==='self') continue;
+          if(!f||f._readonly) continue;
           if(f.page<1||f.page>pdfLibDoc.getPageCount()) continue;
           const page=pdfLibDoc.getPage(f.page-1);
           const {height:pageH}=page.getSize();
@@ -520,9 +533,24 @@
           if(val.dataUrl){
             const imgBytes=Uint8Array.from(atob(val.dataUrl.split(',')[1]),c=>c.charCodeAt(0));
             const img=await pdfLibDoc.embedPng(imgBytes);
-            page.drawImage(img,{
-              x:f.x, y:pageH-f.y-f.height, width:f.width, height:f.height,
-            });
+            // Maintain image aspect ratio - fit inside the field bounds
+            const imgRatio = img.width / img.height;
+            const fieldRatio = f.width / f.height;
+            let drawW, drawH, drawX, drawY;
+            if (imgRatio > fieldRatio) {
+              // Image is wider than field - fit to width
+              drawW = f.width;
+              drawH = f.width / imgRatio;
+              drawX = f.x;
+              drawY = pageH - f.y - f.height + (f.height - drawH) / 2;
+            } else {
+              // Image is taller - fit to height
+              drawH = f.height;
+              drawW = f.height * imgRatio;
+              drawY = pageH - f.y - f.height;
+              drawX = f.x + (f.width - drawW) / 2;
+            }
+            page.drawImage(img, { x:drawX, y:drawY, width:drawW, height:drawH });
           } else if(val.value && f.type==='text'){
             safeDraw(page, val.value, {
               x:f.x+4, y:pageH-f.y-f.height+6, size:Math.min(14,f.height-8), font:bFont,

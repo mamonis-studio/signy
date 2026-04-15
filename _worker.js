@@ -98,17 +98,23 @@ const clamp=(s,max)=>typeof s==='string'?s.slice(0,max):s;
 /* == signFields sanitizer — whitelist properties, limit count == */
 function sanitizeFields(raw){
   if(!Array.isArray(raw))return[];
-  return raw.slice(0,50).map(f=>({
-    type:['signature','stamp','text','date','checkbox'].includes(f.type)?f.type:'signature',
-    page:Math.max(1,parseInt(f.page)||1),
-    x:Math.max(0,parseFloat(f.x)||0),
-    y:Math.max(0,parseFloat(f.y)||0),
-    width:Math.max(10,parseFloat(f.width||f.w)||200),
-    height:Math.max(10,parseFloat(f.height||f.h)||60),
-    for:f.for==='self'?'self':'signer',
-    label:clamp(String(f.label||''),50),
-    required:f.required!==false,
-  }));
+  return raw.slice(0,50).map(f=>{
+    // for: 'self' | 'signer' (legacy, = all signers) | 'signer:N' (specific signer index)
+    let forVal = 'signer';
+    if(f.for==='self')forVal='self';
+    else if(typeof f.for==='string'&&/^signer:\d+$/.test(f.for))forVal=f.for;
+    return {
+      type:['signature','stamp','text','date','checkbox'].includes(f.type)?f.type:'signature',
+      page:Math.max(1,parseInt(f.page)||1),
+      x:Math.max(0,parseFloat(f.x)||0),
+      y:Math.max(0,parseFloat(f.y)||0),
+      width:Math.max(10,parseFloat(f.width||f.w)||200),
+      height:Math.max(10,parseFloat(f.height||f.h)||60),
+      for:forVal,
+      label:clamp(String(f.label||''),50),
+      required:f.required!==false,
+    };
+  });
 }
 
 /* == Rate Limiter (KV-based, per IP) == */
@@ -187,6 +193,7 @@ async function docUpload(req,env,C){
   if(usage.count>=(LIMITS[plan]||5))return J({error:'Monthly limit reached'},403,C);
   const fd=await req.formData();
   const pdf=fd.get('pdf'),title=clamp(fd.get('title')||'Untitled',200),message=clamp(fd.get('message')||'',2000);
+  const customSubject=clamp(fd.get('customSubject')||'',100);
   if(!pdf||typeof pdf==='string')return J({error:'Missing PDF file'},400,C);
   if(!(await validatePdf(pdf)))return J({error:'Invalid file: PDF required'},400,C);
   let signFields=[];try{signFields=sanitizeFields(JSON.parse(fd.get('signFields')||'[]'))}catch{}
@@ -202,7 +209,7 @@ async function docUpload(req,env,C){
   await env.SIGNY_DOCUMENTS.put(pdfKey,pdf.stream(),{httpMetadata:{contentType:'application/pdf'}});
   const now=new Date(),expiryDays=EXPIRY[plan]||EXPIRY.free;
   const signersData=signers.map((s,i)=>({email:s.email,order:s.order||(i+1),signToken:uid(),status:'pending',signedAt:null,remindersSent:0,lastReminderAt:null}));
-  const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:signers[0]?.email,signers:signersData,message,signFields,pdfKey,signedPdfKey:null,createdAt:now.toISOString(),signedAt:null,expiresAt:new Date(Date.now()+expiryDays*864e5).toISOString(),workflowEnabled:signers.length>1};
+  const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:signers[0]?.email,signers:signersData,message,customSubject:customSubject||null,signFields,pdfKey,signedPdfKey:null,createdAt:now.toISOString(),signedAt:null,expiresAt:new Date(Date.now()+expiryDays*864e5).toISOString(),workflowEnabled:signers.length>1};
   await env.SIGNY_KV.put(`doc:${docId}`,JSON.stringify(doc));
   const uDocs=await env.SIGNY_KV.get(`user-docs:${u.userId}`,'json')||[];uDocs.push(docId);
   await env.SIGNY_KV.put(`user-docs:${u.userId}`,JSON.stringify(uDocs));
@@ -221,7 +228,7 @@ async function docSend(req,env,C){
   for(const signer of toNotify){
     const signUrl=`${APP(env)}/sign.html?id=${doc.id}&token=${signer.signToken}`;
     const orderInfo=doc.workflowEnabled?`<p style="color:#999;font-size:13px">署名順序: ${signer.order}/${doc.signers.length}番目</p>`:'';
-    await mail(env,signer.email,`【Signy】署名のお願い - ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(doc.ownerEmail)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p>${orderInfo}${doc.message?`<div style="color:#666;margin:12px 0;padding:12px 16px;background:#f5f5f5;border-radius:8px;font-size:14px">${esc(doc.message).replace(/\n/g,'<br>')}</div>`:''}${acBtn(signUrl,'署名する')}`));
+    await mail(env,signer.email,doc.customSubject || `【Signy】署名のお願い - ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(doc.ownerEmail)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p>${orderInfo}${doc.message?`<div style="color:#666;margin:12px 0;padding:12px 16px;background:#f5f5f5;border-radius:8px;font-size:14px">${esc(doc.message).replace(/\n/g,'<br>')}</div>`:''}${acBtn(signUrl,'署名する')}`));
   }
   await auditLog(env,documentId,'sent',{to:toNotify.map(s=>s.email)});
   return J({ok:true,sentTo:toNotify.map(s=>s.email)},200,C);
@@ -234,6 +241,7 @@ async function docBulkSend(req,env,C){
   if(userData?.plan!=='pro')return J({error:'一括送信はPROプラン限定です'},403,C);
   const fd=await req.formData();
   const pdf=fd.get('pdf'),title=clamp(fd.get('title')||'Untitled',200),message=clamp(fd.get('message')||'',2000),csvText=fd.get('csv')||'';
+  const customSubject=clamp(fd.get('customSubject')||'',100);
   let signFields=[];try{signFields=sanitizeFields(JSON.parse(fd.get('signFields')||'[]'))}catch{}
   if(!pdf||!csvText)return J({error:'Missing PDF or CSV'},400,C);
   if(csvText.length>1e6)return J({error:'CSV too large (max 1MB)'},400,C);
@@ -255,12 +263,12 @@ async function docBulkSend(req,env,C){
   for(const r of recipients){
     const docId=`doc_${uid()}`,signToken=uid(),pdfKey=`docs/${docId}/original.pdf`;
     await env.SIGNY_DOCUMENTS.put(pdfKey,pdfBuf,{httpMetadata:{contentType:'application/pdf'}});
-    const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:r.email,signers:[{email:r.email,order:1,signToken,status:'pending',signedAt:null,remindersSent:0,lastReminderAt:null}],message,signFields,pdfKey,signedPdfKey:null,createdAt:new Date().toISOString(),signedAt:null,expiresAt:new Date(Date.now()+EXPIRY.pro*864e5).toISOString(),workflowEnabled:false,batchId};
+    const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:r.email,signers:[{email:r.email,order:1,signToken,status:'pending',signedAt:null,remindersSent:0,lastReminderAt:null}],message,customSubject:customSubject||null,signFields,pdfKey,signedPdfKey:null,createdAt:new Date().toISOString(),signedAt:null,expiresAt:new Date(Date.now()+EXPIRY.pro*864e5).toISOString(),workflowEnabled:false,batchId};
     await env.SIGNY_KV.put(`doc:${docId}`,JSON.stringify(doc));
     uDocs.push(docId);
     await env.SIGNY_KV.put(`pending:${docId}`,'1',{expirationTtl:EXPIRY.pro*86400+86400});
     const signUrl=`${APP(env)}/sign.html?id=${docId}&token=${signToken}`;
-    await mail(env,r.email,`【Signy】署名のお願い - ${title}`,emailWrap(`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(u.email)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(title)}</strong></p>${acBtn(signUrl,'署名する')}`));
+    await mail(env,r.email,customSubject||`【Signy】署名のお願い - ${title}`,emailWrap(`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(u.email)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(title)}</strong></p>${acBtn(signUrl,'署名する')}`));
     usage.count++;results.push({email:r.email,docId,status:'sent'});
     await auditLog(env,docId,'bulk_sent',{batchId,to:r.email});
   }
@@ -284,7 +292,16 @@ async function docGet(docId,url,env,C,req){
     if(pendingBefore.length>0)return J({error:'waiting',message:'前の署名者の完了を待っています',queue:signer.order,total:doc.signers.length},200,C);
   }
   await auditLog(env,docId,'opened',ci(req));
-  return J({id:doc.id,title:doc.title,ownerEmail:doc.ownerEmail,signFields:doc.signFields,pdfUrl:`${APP(env)}/api/documents/${docId}/pdf?token=${token}`,signerOrder:signer.order,totalSigners:doc.signers.length,workflowEnabled:doc.workflowEnabled,createdAt:doc.createdAt,expiresAt:doc.expiresAt},200,C);
+  // Filter fields: signer sees only their own fields (signer:N where N = their index)
+  // plus 'self' fields as read-only context (owner already filled them, so skip for input)
+  const signerIdx = doc.signers.findIndex(s => s.signToken === token);
+  const filteredFields = (doc.signFields || []).map((f, origIdx) => ({
+    ...f,
+    _origIdx: origIdx, // preserve original index for sign submission
+    _assigned: f.for === `signer:${signerIdx}` || f.for === 'signer', // true = this signer fills it
+    _readonly: f.for === 'self' || (f.for?.startsWith('signer:') && f.for !== `signer:${signerIdx}`),
+  }));
+  return J({id:doc.id,title:doc.title,ownerEmail:doc.ownerEmail,signFields:filteredFields,signerIndex:signerIdx,signerEmail:signer.email,pdfUrl:`${APP(env)}/api/documents/${docId}/pdf?token=${token}`,signerOrder:signer.order,totalSigners:doc.signers.length,workflowEnabled:doc.workflowEnabled,createdAt:doc.createdAt,expiresAt:doc.expiresAt},200,C);
 }
 
 async function docSign(docId,req,env,C){

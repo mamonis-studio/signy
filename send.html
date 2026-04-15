@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#00e0a0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -25,9 +27,10 @@
     .field-toolbar button svg { width:16px; height:16px; }
 
     /* Field overlay on PDF */
-    .sign-field { position:absolute; border:2px dashed var(--ac); border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:move; user-select:none; z-index:10; }
-    .sign-field--signature { background:rgba(0,224,160,.08); border-color:#00e0a0; }
-    .sign-field--text { background:rgba(59,130,246,.08); border-color:#3b82f6; }
+    .sign-field { position:absolute; border:2px dashed var(--ac); border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:move; user-select:none; z-index:10; touch-action:none; }
+    .sign-field--dragging { z-index:20; box-shadow:0 8px 24px rgba(0,0,0,.4); cursor:grabbing; }
+    .sign-field--selected { box-shadow:0 0 0 2px var(--ac), 0 4px 12px rgba(0,0,0,.3); z-index:15; }
+    .sign-field--signature { background:rgba(0,224,160,.08); border-color:#00e0a0; }    .sign-field--text { background:rgba(59,130,246,.08); border-color:#3b82f6; }
     .sign-field--date { background:rgba(234,179,8,.08); border-color:#eab308; }
     .sign-field--stamp { background:rgba(239,68,68,.08); border-color:#ef4444; }
     .sign-field--checkbox { background:rgba(168,85,247,.08); border-color:#a855f7; }
@@ -45,6 +48,33 @@
     .sign-field:hover .sign-field__remove { display:flex; }
     .sign-field__resize { position:absolute; bottom:-4px; right:-4px; width:12px; height:12px; background:var(--ac); border-radius:2px; cursor:nwse-resize; display:none; z-index:20; }
     .sign-field:hover .sign-field__resize { display:block; }
+    .sf-badge { position:absolute; top:-10px; left:-10px; width:22px; height:22px; border-radius:50%; color:#fff; font-size:.7rem; font-weight:700; display:flex; align-items:center; justify-content:center; z-index:15; pointer-events:none; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+
+    /* Page thumbnail strip */
+    .thumb-strip { display:flex; gap:8px; padding:12px; background:var(--bg-s); border-top:1px solid var(--bd); overflow-x:auto; scrollbar-width:thin; }
+    .thumb-strip::-webkit-scrollbar { height:6px; }
+    .thumb-strip::-webkit-scrollbar-thumb { background:var(--bd); border-radius:3px; }
+    .thumb-item { flex-shrink:0; width:60px; cursor:pointer; border-radius:4px; border:2px solid transparent; transition:border-color .15s; position:relative; background:var(--bg); }
+    .thumb-item:hover { border-color:var(--bd-l); }
+    .thumb-item--active { border-color:var(--ac); }
+    .thumb-item canvas { width:100%; height:auto; display:block; border-radius:2px; }
+    .thumb-item__num { position:absolute; bottom:-2px; left:50%; transform:translateX(-50%); font-size:.65rem; font-weight:700; color:var(--tx2); padding:1px 6px; background:var(--bg); border-radius:8px; }
+    .thumb-item--active .thumb-item__num { color:var(--ac); }
+    .thumb-item__field-count { position:absolute; top:2px; right:2px; background:var(--ac); color:#fff; font-size:.55rem; font-weight:700; padding:1px 4px; border-radius:6px; min-width:14px; text-align:center; }
+
+    /* Preview Modal */
+    .preview-modal { position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(8px); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .preview-modal__inner { background:var(--bg); border:1px solid var(--bd); border-radius:12px; padding:20px; max-width:900px; width:100%; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
+    .preview-modal__header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .preview-modal__signer-tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+    .preview-tab { padding:6px 12px; font-size:.75rem; font-weight:600; border-radius:100px; border:1.5px solid var(--bd); background:transparent; color:var(--tx); cursor:pointer; font-family:inherit; transition:all .15s; }
+    .preview-tab--active { background:var(--ac); border-color:var(--ac); color:#fff; }
+    .preview-modal__pdf { flex:1; overflow:auto; background:#1a1a1a; border-radius:6px; padding:16px; display:flex; justify-content:center; min-height:400px; position:relative; }
+    .preview-modal__pdf canvas { box-shadow:0 4px 20px rgba(0,0,0,.5); max-width:100%; height:auto; }
+    .preview-modal__pdf-stage { position:relative; }
+    .preview-modal__page-nav { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:12px; }
+    .preview-field { position:absolute; border:2px solid; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:.6rem; font-weight:700; color:#fff; pointer-events:none; }
+    .preview-field--readonly { opacity:.25; border-style:dashed; background:rgba(128,128,128,.1)!important; color:#888; }
 
     /* Signer selector */
     .signer-select { display:flex; gap:6px; margin-bottom:12px; }
@@ -74,7 +104,7 @@
   <main><section class="send-flow"><div class="container container--narrow">
     <h1 class="mb-24" data-i18n="send.title"></h1>
 
-    <div class="steps" id="stepsNav">
+    <div class="steps" id="stepsNav" role="navigation" aria-label="Send progress">
       <div class="step step--active" data-step="1" data-i18n="send.s1"></div>
       <div class="step" data-step="2" data-i18n="send.s2"></div>
       <div class="step" data-step="3" data-i18n="send.s3"></div>
@@ -94,7 +124,7 @@
             <span id="fIcon" style="color:var(--ac);flex-shrink:0"></span>
             <div style="min-width:0;overflow:hidden"><div id="fName" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><div id="fSize" class="text-muted" style="font-size:.8rem"></div></div>
           </div>
-          <button class="btn btn--ghost btn--sm" id="rmFile" style="flex-shrink:0"></button>
+          <button class="btn btn--ghost btn--sm" id="rmFile" style="flex-shrink:0" aria-label="Remove file"></button>
         </div>
       </div>
 
@@ -104,6 +134,17 @@
         <select id="templateSelect" class="form-input" style="font-size:.85rem">
           <option value="" data-i18n="send.tmpl.select"></option>
         </select>
+      </div>
+
+      <!-- Signers list (required before Step 2) -->
+      <div class="card mt-16" id="signersCard" style="display:none">
+        <h3 style="font-size:.9rem;margin-bottom:6px" data-i18n="send.signers"></h3>
+        <p style="font-size:.75rem;color:var(--txm);margin-bottom:12px" data-i18n="send.signers.hint"></p>
+        <div id="signersEditList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="email" class="form-input" id="newSignerEmailS1" data-i18n-attr="placeholder:send.email.ph" style="flex:1;font-size:.85rem;padding:8px 12px">
+          <button class="btn btn--secondary btn--sm" id="addSignerS1" type="button" data-i18n="send.signers.add"></button>
+        </div>
       </div>
 
       <div class="flex mt-24" style="justify-content:flex-end">
@@ -119,13 +160,10 @@
         <span class="sign-info__text" data-i18n="send.guide.fields"></span>
       </div>
 
-      <!-- Signer selector -->
+      <!-- Signer selector (dynamic: self + each signer) -->
       <div style="margin-bottom:12px">
-        <div class="signer-select" id="signerSelect">
-          <button class="signer-btn signer-btn--self" data-for="self" data-i18n="send.signer.self"></button>
-          <button class="signer-btn signer-btn--active" data-for="signer" data-i18n="send.signer.other"></button>
-        </div>
-        <p style="font-size:.75rem;color:var(--txm);margin-top:6px" id="signerHint" data-i18n="send.guide.signer"></p>
+        <p style="font-size:.75rem;color:var(--txm);margin-bottom:6px"><span data-i18n="send.guide.fieldfor"></span></p>
+        <div class="signer-select" id="signerSelect"></div>
       </div>
 
       <!-- Field type toolbar -->
@@ -158,12 +196,13 @@
             <span class="mono" style="font-size:.75rem;color:var(--tx2)" id="fieldCount"></span>
           </div>
           <div class="pdf-editor__toolbar-group">
-            <button class="btn btn--ghost btn--sm" id="prevP" disabled></button>
-            <span class="mono" style="font-size:.8rem;color:var(--tx2)" id="pageInd"></span>
-            <button class="btn btn--ghost btn--sm" id="nextP" disabled></button>
+            <button class="btn btn--ghost btn--sm" id="prevP" disabled aria-label="Previous page"></button>
+            <span class="mono" id="pageInd" style="font-size:.8rem;color:var(--tx2);cursor:pointer;padding:4px 8px;border-radius:4px" title="クリックでページ指定" role="button" tabindex="0" aria-label="Jump to page"></span>
+            <button class="btn btn--ghost btn--sm" id="nextP" disabled aria-label="Next page"></button>
           </div>
         </div>
         <div class="pdf-editor__canvas-wrap" id="cWrap"><canvas id="pdfC"></canvas></div>
+        <div class="thumb-strip" id="thumbStrip" style="display:none"></div>
       </div>
 
       <!-- Template save -->
@@ -187,20 +226,22 @@
             <input type="text" class="form-input" id="docTitle" data-i18n-attr="placeholder:send.doc.ph">
           </div>
 
-          <!-- Multi-signer section -->
+          <!-- Signers readonly summary -->
           <div class="form-group">
-            <label class="form-label"><span data-i18n="send.signers"></span> <span class="text-muted" style="font-size:.75rem;text-transform:none;letter-spacing:0" data-i18n="send.signers.multi"></span></label>
+            <label class="form-label"><span data-i18n="send.signers"></span></label>
             <p style="font-size:.75rem;color:var(--txm);margin-bottom:4px" data-i18n="send.guide.order"></p>
             <div id="signerList" style="display:flex;flex-direction:column;gap:8px"></div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <input type="email" class="form-input" id="newSignerEmail" data-i18n-attr="placeholder:send.email.ph" style="flex:1">
-              <button class="btn btn--secondary btn--sm" id="addSignerBtn" type="button" style="flex-shrink:0" data-i18n="send.signers.add"></button>
-            </div>
           </div>
 
           <div class="form-group">
             <label class="form-label" for="signerMsg" data-i18n="send.msg"></label>
             <textarea class="form-textarea" id="signerMsg" rows="3" data-i18n-attr="placeholder:send.msg.ph"></textarea>
+          </div>
+
+          <!-- Custom email subject (PRO) -->
+          <div class="form-group" id="customSubjectGroup" style="display:none">
+            <label class="form-label" for="customSubject"><span data-i18n="mail.subject.custom"></span> <span style="font-size:.65rem;background:var(--ac);color:#fff;padding:2px 6px;border-radius:100px;margin-left:6px">PRO</span></label>
+            <input type="text" class="form-input" id="customSubject" maxlength="100" data-i18n-attr="placeholder:mail.subject.ph">
           </div>
         </div>
       </div>
@@ -213,13 +254,40 @@
         <button class="btn btn--primary btn--sm mt-12" id="bulkSendBtn" disabled data-i18n="send.bulk.btn"></button>
       </div>
 
-      <div class="flex mt-24" style="justify-content:space-between">
+      <!-- Send summary preview -->
+      <div class="card mt-16" id="sendSummary" style="display:none">
+        <h3 style="font-size:.9rem;margin-bottom:8px" data-i18n="send.preview.title"></h3>
+        <div id="sendSummaryContent" style="font-size:.85rem"></div>
+      </div>
+
+      <div class="flex mt-24" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
         <button class="btn btn--secondary" id="backS2" data-i18n="send.back"></button>
-        <button class="btn btn--primary" id="sendBtn"></button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn--secondary" id="previewBtn" type="button" data-i18n="send.preview"></button>
+          <button class="btn btn--primary" id="sendBtn"></button>
+        </div>
       </div>
       <p style="font-size:.75rem;color:var(--txm);text-align:center;margin-top:12px" data-i18n="send.guide.after"></p>
     </div>
   </div></section></main>
+
+  <!-- Preview Modal -->
+  <div id="previewModal" class="preview-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+    <div class="preview-modal__inner">
+      <div class="preview-modal__header">
+        <h3 id="previewTitle" data-i18n="send.preview"></h3>
+        <button class="btn btn--ghost btn--sm" id="closePreviewBtn" type="button" aria-label="Close" style="font-size:1.2rem;padding:4px 12px">×</button>
+      </div>
+      <div class="preview-modal__signer-tabs" id="previewTabs"></div>
+      <p style="font-size:.8rem;color:var(--tx2);margin-bottom:12px"><span id="previewSignerName"></span><span data-i18n="send.preview.signer"></span></p>
+      <div class="preview-modal__pdf" id="previewPdfWrap"></div>
+      <div class="preview-modal__page-nav">
+        <button class="btn btn--ghost btn--sm" id="previewPrev" type="button">‹</button>
+        <span class="mono" id="previewPageInd" style="font-size:.85rem;color:var(--tx2)"></span>
+        <button class="btn btn--ghost btn--sm" id="previewNext" type="button">›</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="footer">
     <p class="footer__text" data-i18n="footer"></p>
@@ -246,7 +314,7 @@
     applyI18n();
 
     let pdfFile=null, pdfDoc=null, curPage=1, totalPages=0, fields=[], scale=1.5;
-    let currentSigner = 'signer';
+    let currentSigner = 'signer:0';
     let dupFields = null; // Saved fields from duplicate flow
     const canvas=document.getElementById('pdfC'), ctx=canvas.getContext('2d'), wrap=document.getElementById('cWrap');
 
@@ -295,14 +363,7 @@
       applyI18n();
     }
 
-    // Signer toggle
-    document.querySelectorAll('.signer-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.signer-btn').forEach(b => b.classList.remove('signer-btn--active'));
-        btn.classList.add('signer-btn--active');
-        currentSigner = btn.dataset.for;
-      });
-    });
+    // Signer selector is now built dynamically in updateSignerSelector()
 
     // Upload
     const zone=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
@@ -322,9 +383,10 @@
       document.getElementById('fIcon').innerHTML=I.fileText;
       document.getElementById('fName').textContent=f.name;
       document.getElementById('fSize').textContent=fmtSize(f.size);
-      document.getElementById('toS2').disabled=false;
       zone.style.display='none';
       document.getElementById('docTitle').value=f.name.replace(/\.pdf$/i,'');
+      document.getElementById('signersCard').style.display='block';
+      updateS1Next();
       loadTemplates();
     }
 
@@ -332,15 +394,18 @@
       pdfFile=null;pdfDoc=null;fields=[];
       document.querySelectorAll('.sign-field').forEach(e=>e.remove());
       document.getElementById('fileInfo').style.display='none';
-      document.getElementById('toS2').disabled=true;
+      updateS1Next();
       zone.style.display='block';fi.value='';
     });
 
     document.getElementById('toS2').addEventListener('click',async()=>{
-      if(!pdfFile)return;
+      if(!pdfFile||!signersList.length)return;
       const btn=document.getElementById('toS2');
       btn.disabled=true;btn.textContent=t('send.loading');
+      // Default currentSigner to first signer
+      if(!currentSigner.startsWith('signer:')||parseInt(currentSigner.split(':')[1])>=signersList.length)currentSigner='signer:0';
       goStep(2);
+      updateSignerSelector();
       try{await loadPdf()}catch(e){toast(e.message||t('toast.pdf.err'),'error');goStep(1)}
       btn.disabled=false;btn.textContent=t('send.next');
     });
@@ -357,14 +422,89 @@
       const ab=await pdfFile.arrayBuffer();
       pdfDoc=await pdfjsLib.getDocument({data:ab}).promise;
       totalPages=pdfDoc.numPages;curPage=1;
+      // Check for rotated pages - warn user (signature placement won't work correctly)
+      let hasRotation = false;
+      for (let i = 1; i <= totalPages; i++) {
+        const p = await pdfDoc.getPage(i);
+        if (p.rotate && p.rotate !== 0) { hasRotation = true; break; }
+      }
+      if (hasRotation) toast(t('toast.pdf.rotated'), 'error');
       await renderPage(curPage);updateNav();updateFieldCount();
+      // Generate thumbnails for all pages (only show if multi-page)
+      if (totalPages > 1) await renderThumbnails();
       // Auto-apply fields from duplicate flow
       if(dupFields&&dupFields.length){
         dupFields.forEach(f=>addField(f.type,{...f,x:(f.x||0)*scale,y:(f.y||0)*scale,w:(f.width||f.w||200)*scale,h:(f.height||f.h||60)*scale}));
         dupFields=null;
         toast(t('toast.dup.fields'),'success');
         updateFieldCount();
+        updateThumbBadges();
       }
+    }
+
+    async function renderThumbnails(){
+      const strip = document.getElementById('thumbStrip');
+      if (!strip) return;
+      strip.innerHTML = '';
+      strip.style.display = 'flex';
+      const THUMB_SCALE = 0.15;
+      for (let n = 1; n <= totalPages; n++) {
+        const item = document.createElement('div');
+        item.className = 'thumb-item' + (n === curPage ? ' thumb-item--active' : '');
+        item.dataset.page = n;
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-label', `${t('send.page')} ${n}`);
+        const tCanvas = document.createElement('canvas');
+        item.appendChild(tCanvas);
+        const num = document.createElement('span');
+        num.className = 'thumb-item__num';
+        num.textContent = n;
+        item.appendChild(num);
+        item.addEventListener('click', async () => {
+          if (curPage === n) return;
+          curPage = n;
+          await renderPage(n);
+          updateNav();
+          updateThumbActive();
+        });
+        strip.appendChild(item);
+        // Render thumb (async, non-blocking)
+        try {
+          const page = await pdfDoc.getPage(n);
+          const vp = page.getViewport({scale: THUMB_SCALE});
+          tCanvas.width = vp.width; tCanvas.height = vp.height;
+          await page.render({canvasContext: tCanvas.getContext('2d'), viewport: vp}).promise;
+        } catch {}
+      }
+      updateThumbBadges();
+    }
+
+    function updateThumbActive(){
+      document.querySelectorAll('.thumb-item').forEach(it => {
+        it.classList.toggle('thumb-item--active', +it.dataset.page === curPage);
+      });
+      // Auto-scroll active thumb into view
+      const active = document.querySelector('.thumb-item--active');
+      if (active) active.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    }
+
+    function updateThumbBadges(){
+      // Show field count badge per page
+      document.querySelectorAll('.thumb-item').forEach(it => {
+        const p = +it.dataset.page;
+        const count = fields.filter(f => f.page === p).length;
+        let badge = it.querySelector('.thumb-item__field-count');
+        if (count > 0) {
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'thumb-item__field-count';
+            it.appendChild(badge);
+          }
+          badge.textContent = count;
+        } else if (badge) {
+          badge.remove();
+        }
+      });
     }
 
     async function renderPage(n){
@@ -383,10 +523,188 @@
     function updateFieldCount(){
       document.getElementById('fieldCount').textContent = t('send.fields.count').replace('{count}', fields.length);
       document.getElementById('toS3').disabled = fields.length === 0;
+      autoSave();
+      updateThumbBadges();
     }
 
-    document.getElementById('prevP').addEventListener('click',async()=>{if(curPage>1){curPage--;await renderPage(curPage);updateNav()}});
-    document.getElementById('nextP').addEventListener('click',async()=>{if(curPage<totalPages){curPage++;await renderPage(curPage);updateNav()}});
+    // ============================================================
+    // AUTO-SAVE / RESTORE (localStorage, debounced)
+    // ============================================================
+    const DRAFT_KEY = 'signy-draft-v1';
+    let saveTimer = null;
+    function autoSave() {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        try {
+          const draft = {
+            title: document.getElementById('docTitle')?.value || '',
+            msg: document.getElementById('signerMsg')?.value || '',
+            customSubject: document.getElementById('customSubject')?.value || '',
+            signers: signersList,
+            fields: fields.map(f => ({
+              type: f.type, page: f.page,
+              x: Math.round(f.x/scale), y: Math.round(f.y/scale),
+              width: Math.round(f.w/scale), height: Math.round(f.h/scale),
+              for: f.for, label: f.label, required: f.required,
+            })),
+            pdfName: pdfFile?.name || '',
+            pdfSize: pdfFile?.size || 0,
+            ts: Date.now(),
+          };
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch {}
+      }, 500);
+    }
+    function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
+    function loadDraft() {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return null;
+        const d = JSON.parse(raw);
+        // Discard drafts older than 7 days
+        if (Date.now() - d.ts > 7 * 86400 * 1000) { clearDraft(); return null; }
+        return d;
+      } catch { return null; }
+    }
+    // Auto-save on title/msg edit
+    document.getElementById('docTitle').addEventListener('input', autoSave);
+    document.getElementById('signerMsg').addEventListener('input', autoSave);
+    document.getElementById('customSubject')?.addEventListener('input', autoSave);
+
+    // ============================================================
+    // BEFOREUNLOAD WARNING (only when there's unsaved work)
+    // ============================================================
+    window.addEventListener('beforeunload', (e) => {
+      if (pdfFile && (fields.length > 0 || signersList.length > 0)) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    });
+
+    // ============================================================
+    // OFFER TO RESTORE DRAFT (on Step 1 load)
+    // ============================================================
+    setTimeout(() => {
+      const draft = loadDraft();
+      if (draft && (draft.fields?.length || draft.signers?.length || draft.title || draft.msg)) {
+        const ageMin = Math.round((Date.now() - draft.ts) / 60000);
+        const ageStr = ageMin < 60 ? `${ageMin}${t('draft.ago.min')}` : `${Math.round(ageMin/60)}${t('draft.ago.hr')}`;
+        const summary = `${draft.title || draft.pdfName || ''} (${draft.signers?.length||0} ${t('draft.signers')}, ${draft.fields?.length||0} ${t('draft.fields')}, ${ageStr})`;
+        if (confirm(`${t('draft.restore.q')}\n\n${summary}`)) {
+          // Restore non-PDF data; user must re-upload PDF
+          if (draft.title) document.getElementById('docTitle').value = draft.title;
+          if (draft.msg) document.getElementById('signerMsg').value = draft.msg;
+          if (draft.customSubject) {
+            const cs = document.getElementById('customSubject');
+            if (cs) cs.value = draft.customSubject;
+          }
+          if (draft.signers?.length) {
+            signersList = draft.signers;
+            renderSignersEdit();
+            renderSignerList();
+            updateSignerSelector();
+          }
+          // Cache fields to restore after PDF load
+          if (draft.fields?.length) dupFields = draft.fields;
+          toast(t('toast.draft.restored'), 'success');
+        } else {
+          clearDraft();
+        }
+      }
+    }, 100);
+
+    // ============================================================
+    // KEYBOARD SHORTCUTS
+    // ============================================================
+    let selectedFieldId = null;
+    function selectField(id) {
+      selectedFieldId = id;
+      document.querySelectorAll('.sign-field').forEach(el => el.classList.toggle('sign-field--selected', el.id === `f-${id}`));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      // Ignore when typing in inputs
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+
+      // Delete / Backspace: remove selected field
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedFieldId) {
+        e.preventDefault();
+        pushHistory();
+        fields = fields.filter(f => f.id !== selectedFieldId);
+        document.getElementById(`f-${selectedFieldId}`)?.remove();
+        selectedFieldId = null;
+        updateFieldCount();
+      }
+      // Ctrl/Cmd+Z: undo
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl/Cmd+D: duplicate selected field
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedFieldId) {
+        e.preventDefault();
+        duplicateField(selectedFieldId);
+      }
+      // Escape: deselect
+      else if (e.key === 'Escape') {
+        selectField(null);
+      }
+    });
+
+    // ============================================================
+    // UNDO HISTORY (last 20 states)
+    // ============================================================
+    const history = [];
+    const HISTORY_MAX = 20;
+    function pushHistory() {
+      const snapshot = JSON.stringify(fields.map(f => ({...f})));
+      history.push(snapshot);
+      if (history.length > HISTORY_MAX) history.shift();
+    }
+    function undo() {
+      if (!history.length) { toast(t('toast.undo.empty'), 'info'); return; }
+      const snapshot = history.pop();
+      try {
+        const restored = JSON.parse(snapshot);
+        fields = restored;
+        document.querySelectorAll('.sign-field').forEach(e => e.remove());
+        fields.filter(f => f.page === curPage).forEach(f => createFieldEl(f));
+        updateFieldCount();
+        toast(t('toast.undo.ok'), 'success');
+      } catch { toast(t('err'), 'error'); }
+    }
+
+    // ============================================================
+    // DUPLICATE FIELD
+    // ============================================================
+    function duplicateField(id) {
+      const f = fields.find(x => x.id === id);
+      if (!f) return;
+      pushHistory();
+      addField(f.type, {
+        ...f,
+        x: Math.min(canvas.width - f.w, f.x + 20),
+        y: Math.min(canvas.height - f.h, f.y + 20),
+        w: f.w, h: f.h,
+        for: f.for,
+      });
+    }
+
+    document.getElementById('prevP').addEventListener('click',async()=>{if(curPage>1){curPage--;await renderPage(curPage);updateNav();updateThumbActive()}});
+    document.getElementById('nextP').addEventListener('click',async()=>{if(curPage<totalPages){curPage++;await renderPage(curPage);updateNav();updateThumbActive()}});
+    // Click on page indicator to jump
+    document.getElementById('pageInd').addEventListener('click', async () => {
+      if (totalPages <= 1) return;
+      const input = prompt(t('send.page.jump').replace('{total}', totalPages), curPage);
+      const n = parseInt(input);
+      if (n >= 1 && n <= totalPages && n !== curPage) {
+        curPage = n;
+        await renderPage(curPage);
+        updateNav();
+      }
+    });
 
     // Add field via toolbar buttons
     document.getElementById('fieldToolbar').addEventListener('click', (e) => {
@@ -407,6 +725,7 @@
         label: preset?.label || getFieldLabel(type),
         required: preset?.required !== false,
       };
+      if (typeof pushHistory === 'function') pushHistory();
       fields.push(f);
       createFieldEl(f);
       updateFieldCount();
@@ -419,56 +738,121 @@
       el.style.cssText=`left:${f.x}px;top:${f.y}px;width:${f.w}px;height:${f.h}px`;
       el.dataset.page=f.page;
 
+      // Assign signer color + badge
+      let badge = '';
+      if (f.for === 'self') {
+        el.style.borderColor = '#888';
+        el.style.background = 'rgba(136,136,136,.08)';
+        badge = `<span class="sf-badge" style="background:#888">${t('send.field.self.short')}</span>`;
+      } else if (f.for?.startsWith('signer:')) {
+        const idx = parseInt(f.for.split(':')[1]);
+        const color = signerColor(idx);
+        el.style.borderColor = color;
+        el.style.background = hexToRgba(color, 0.08);
+        badge = `<span class="sf-badge" style="background:${color}">${idx+1}</span>`;
+      }
+
       const iconKey = FIELD_TYPES[f.type].icon;
-      const forLabel = f.for === 'self' ? t('send.field.self') : '';
-      el.innerHTML=`<span class="sign-field__label">${FIELD_ICONS[iconKey]} ${esc(f.label)}${forLabel}</span><button class="sign-field__remove">&times;</button><div class="sign-field__resize"></div>`;
+      el.innerHTML=`${badge}<span class="sign-field__label">${FIELD_ICONS[iconKey]} ${esc(f.label)}</span><button class="sign-field__remove">&times;</button><div class="sign-field__resize"></div>`;
 
       el.querySelector('.sign-field__remove').addEventListener('click',e=>{
         e.stopPropagation();
+        if (typeof pushHistory === 'function') pushHistory();
         fields=fields.filter(x=>x.id!==f.id);el.remove();
+        if (selectedFieldId === f.id) selectedFieldId = null;
         updateFieldCount();
       });
 
-      // Drag
-      let drag=false,sx,sy,ox,oy;
+      // Drag - rAF + transform for smoothness
+      let drag=false, sx, sy, ox, oy, pendingX, pendingY, rafId=null, maxX, maxY;
       const start=e=>{
         if(e.target.closest('.sign-field__remove')||e.target.closest('.sign-field__resize'))return;
         e.preventDefault();drag=true;
-        const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=parseInt(el.style.left);oy=parseInt(el.style.top);
-        document.addEventListener('mousemove',move);document.addEventListener('mouseup',stop);
+        const p=e.touches?e.touches[0]:e;
+        sx=p.clientX;sy=p.clientY;
+        ox=f.x;oy=f.y;
+        pendingX=ox;pendingY=oy;
+        // Cache bounds at drag start (canvas/field size won't change mid-drag)
+        maxX = canvas.width - f.w;
+        maxY = canvas.height - f.h;
+        el.classList.add('sign-field--dragging');
+        el.style.willChange='transform';
+        document.addEventListener('mousemove',move,{passive:false});document.addEventListener('mouseup',stop);
         document.addEventListener('touchmove',move,{passive:false});document.addEventListener('touchend',stop);
       };
-      const move=e=>{if(!drag)return;e.preventDefault();const p=e.touches?e.touches[0]:e;
-        const nx=Math.max(0,Math.min(canvas.width-f.w,ox+(p.clientX-sx)));
-        const ny=Math.max(0,Math.min(canvas.height-f.h,oy+(p.clientY-sy)));
-        el.style.left=nx+'px';el.style.top=ny+'px';f.x=nx;f.y=ny;
+      const applyMove = () => {
+        rafId = null;
+        if (!drag) return;
+        f.x = pendingX; f.y = pendingY;
+        // Use transform for smooth GPU-accelerated movement during drag
+        el.style.transform = `translate(${pendingX - ox}px, ${pendingY - oy}px)`;
       };
-      const stop=()=>{drag=false;document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',stop);
+      const move=e=>{
+        if(!drag)return;
+        e.preventDefault();
+        const p=e.touches?e.touches[0]:e;
+        pendingX = Math.max(0, Math.min(maxX, ox + (p.clientX - sx)));
+        pendingY = Math.max(0, Math.min(maxY, oy + (p.clientY - sy)));
+        // Coalesce updates to next animation frame
+        if (rafId === null) rafId = requestAnimationFrame(applyMove);
+      };
+      const stop=()=>{
+        drag=false;
+        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+        // Commit transform back to left/top so future drags start clean
+        el.style.transform = '';
+        el.style.left = f.x + 'px';
+        el.style.top = f.y + 'px';
+        el.style.willChange = '';
+        el.classList.remove('sign-field--dragging');
+        document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',stop);
         document.removeEventListener('touchmove',move);document.removeEventListener('touchend',stop);
       };
-      el.addEventListener('mousedown',start);el.addEventListener('touchstart',start,{passive:false});
+      el.addEventListener('mousedown',e=>{ selectField(f.id); start(e); });
+      el.addEventListener('touchstart',e=>{ selectField(f.id); start(e); },{passive:false});
 
-      // Resize
+      // Resize - rAF for smoothness
       const resizeEl = el.querySelector('.sign-field__resize');
-      let resizing=false, rsx, rsw, rsh;
-      resizeEl.addEventListener('mousedown', e=>{
+      let resizing=false, rsx, rsy, rsw, rsh, pW, pH, rRafId=null;
+      const startResize = e => {
         e.stopPropagation();e.preventDefault();resizing=true;
-        rsx=e.clientX;rsw=f.w;rsh=f.h;
-        document.addEventListener('mousemove',rMove);document.addEventListener('mouseup',rStop);
-      });
+        const p = e.touches?e.touches[0]:e;
+        rsx=p.clientX;rsy=p.clientY;rsw=f.w;rsh=f.h;pW=rsw;pH=rsh;
+        el.style.willChange='width,height';
+        document.addEventListener('mousemove',rMove,{passive:false});document.addEventListener('mouseup',rStop);
+        document.addEventListener('touchmove',rMove,{passive:false});document.addEventListener('touchend',rStop);
+      };
+      const applyResize = () => {
+        rRafId = null;
+        if (!resizing) return;
+        f.w = pW; f.h = pH;
+        el.style.width = pW+'px'; el.style.height = pH+'px';
+      };
       const rMove=e=>{
         if(!resizing)return;
-        const dx=e.clientX-rsx;
-        const nw=Math.max(24, rsw+dx);
-        // Keep aspect ratio for stamp/checkbox
+        e.preventDefault();
+        const p = e.touches?e.touches[0]:e;
+        const dx=p.clientX-rsx, dy=p.clientY-rsy;
         if(f.type==='stamp'||f.type==='checkbox'){
-          f.w=nw;f.h=nw;
+          // Square: use larger of dx/dy
+          const d = Math.max(dx, dy);
+          pW = Math.max(24, rsw + d);
+          pH = pW;
         } else {
-          f.w=nw;f.h=Math.max(20, rsh);
+          pW = Math.max(40, rsw + dx);
+          pH = Math.max(20, rsh + dy);
         }
-        el.style.width=f.w+'px';el.style.height=f.h+'px';
+        if (rRafId === null) rRafId = requestAnimationFrame(applyResize);
       };
-      const rStop=()=>{resizing=false;document.removeEventListener('mousemove',rMove);document.removeEventListener('mouseup',rStop);};
+      const rStop=()=>{
+        resizing=false;
+        if (rRafId !== null) { cancelAnimationFrame(rRafId); rRafId = null; }
+        el.style.willChange='';
+        document.removeEventListener('mousemove',rMove);document.removeEventListener('mouseup',rStop);
+        document.removeEventListener('touchmove',rMove);document.removeEventListener('touchend',rStop);
+      };
+      resizeEl.addEventListener('mousedown', startResize);
+      resizeEl.addEventListener('touchstart', startResize, {passive:false});
 
       wrap.appendChild(el);
     }
@@ -480,30 +864,50 @@
         if(data.templates?.length){
           const sec = document.getElementById('templateSection');
           sec.style.display = 'block';
+          // Build wrapper: select + delete button
+          sec.innerHTML = `
+            <p style="font-size:.8rem;color:var(--tx2);margin-bottom:8px" data-i18n="send.tmpl.saved"></p>
+            <div style="display:flex;gap:8px">
+              <select id="templateSelect" class="form-input" style="font-size:.85rem;flex:1">
+                <option value="">${esc(t('send.tmpl.select'))}</option>
+                ${data.templates.map(tmpl => `<option value="${esc(tmpl.id)}">${esc(tmpl.name)} (${esc(t('send.tmpl.fields').replace('{count}', tmpl.fields.length))})</option>`).join('')}
+              </select>
+              <button class="btn btn--ghost btn--sm" id="deleteTemplateBtn" type="button" disabled title="${esc(t('send.tmpl.delete'))}" style="padding:8px 12px;color:var(--danger)">×</button>
+            </div>
+          `;
+          applyI18n();
+          // Wire up
           const sel = document.getElementById('templateSelect');
-          sel.innerHTML = `<option value="">${t('send.tmpl.select')}</option>`;
-          data.templates.forEach(tmpl => {
-            sel.innerHTML += `<option value="${esc(tmpl.id)}">${esc(tmpl.name)} (${t('send.tmpl.fields').replace('{count}', tmpl.fields.length)})</option>`;
+          const delBtn = document.getElementById('deleteTemplateBtn');
+          sel.addEventListener('change', async (e) => {
+            const id = e.target.value;
+            delBtn.disabled = !id;
+            if (!id) return;
+            try {
+              const d = await api(`/templates/${id}`);
+              if (d.fields) {
+                pushHistory();
+                fields.forEach(f => document.getElementById(`f-${f.id}`)?.remove());
+                fields = [];
+                d.fields.forEach(tf => addField(tf.type, tf));
+                toast(t('toast.tmpl.applied'), 'success');
+              }
+            } catch (err) { toast(err.message || t('toast.tmpl.err'), 'error'); }
+          });
+          delBtn.addEventListener('click', async () => {
+            const id = sel.value;
+            if (!id) return;
+            const tmplName = sel.options[sel.selectedIndex].text;
+            if (!confirm(t('send.tmpl.delete.confirm').replace('{name}', tmplName))) return;
+            try {
+              await api(`/templates/${id}`, { method: 'DELETE' });
+              toast(t('toast.tmpl.deleted'), 'success');
+              loadTemplates(); // refresh list
+            } catch (err) { toast(err.message || t('err'), 'error'); }
           });
         }
       } catch{}
     }
-
-    document.getElementById('templateSelect')?.addEventListener('change', async(e)=>{
-      const id = e.target.value;
-      if(!id) return;
-      try {
-        const data = await api(`/templates/${id}`);
-        if(data.fields){
-          // Clear existing fields
-          fields.forEach(f => document.getElementById(`f-${f.id}`)?.remove());
-          fields = [];
-          // Apply template fields
-          data.fields.forEach(tf => addField(tf.type, tf));
-          toast(t('toast.tmpl.applied'),'success');
-        }
-      }catch(err){ toast(err.message||t('toast.tmpl.err'),'error'); }
-    });
 
     document.getElementById('saveTemplateBtn').addEventListener('click', async()=>{
       if(!fields.length){ toast(t('toast.tmpl.need'),'error'); return; }
@@ -521,44 +925,197 @@
       } catch(e) { toast(e.message||t('toast.save.err'),'error'); }
     });
 
-    // Multi-signer management
+    // === Multi-signer management (Step 1 entry) ===
     let signersList = [];
 
-    document.getElementById('addSignerBtn').addEventListener('click', () => {
-      const email = document.getElementById('newSignerEmail').value.trim();
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t('toast.email.invalid'),'error'); return; }
-      if (signersList.find(s => s.email === email)) { toast(t('toast.email.dup'),'error'); return; }
+    // Distinct color per signer
+    function signerColor(i) {
+      const colors = ['#00e0a0', '#38bdf8', '#a855f7', '#f59e0b', '#ec4899', '#10b981', '#6366f1', '#f43f5e'];
+      return colors[i % colors.length];
+    }
+    function hexToRgba(hex, a) {
+      const m = hex.replace('#','');
+      const r = parseInt(m.substring(0,2),16), g = parseInt(m.substring(2,4),16), b = parseInt(m.substring(4,6),16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    function addSigner(email) {
+      email = (email || '').trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t('toast.email.invalid'),'error'); return false; }
+      if (signersList.find(s => s.email === email)) { toast(t('toast.email.dup'),'error'); return false; }
       signersList.push({ email, order: signersList.length + 1 });
-      document.getElementById('newSignerEmail').value = '';
+      renderSignersEdit();
       renderSignerList();
-    });
+      updateSignerSelector();
+      updateS1Next();
+      return true;
+    }
 
-    document.getElementById('newSignerEmail').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSignerBtn').click(); }
-    });
+    function removeSigner(i) {
+      signersList.splice(i, 1);
+      signersList.forEach((s, j) => s.order = j + 1);
+      // Remove fields assigned to this signer, reindex later signers' fields
+      fields = fields.filter(f => f.for !== `signer:${i}`);
+      fields.forEach(f => {
+        if (f.for?.startsWith('signer:')) {
+          const idx = parseInt(f.for.split(':')[1]);
+          if (idx > i) f.for = `signer:${idx - 1}`;
+        }
+      });
+      // Re-render any fields on current page
+      document.querySelectorAll('.sign-field').forEach(e => e.remove());
+      fields.filter(f => f.page === curPage).forEach(f => createFieldEl(f));
+      // Fix currentSigner if it pointed to removed one
+      if (currentSigner === `signer:${i}`) currentSigner = signersList.length ? 'signer:0' : 'self';
+      else if (currentSigner.startsWith('signer:')) {
+        const c = parseInt(currentSigner.split(':')[1]);
+        if (c > i) currentSigner = `signer:${c - 1}`;
+      }
+      renderSignersEdit();
+      renderSignerList();
+      updateSignerSelector();
+      updateS1Next();
+      updateFieldCount();
+    }
 
+    // Step 1 editable list
+    function renderSignersEdit() {
+      const list = document.getElementById('signersEditList');
+      if (!list) return;
+      list.innerHTML = '';
+      signersList.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg-e);border:1px solid var(--bd);border-radius:6px;font-size:.85rem';
+        const numSpan = document.createElement('span');
+        numSpan.style.cssText = `font-weight:700;font-size:.7rem;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;background:${signerColor(i)};flex-shrink:0`;
+        numSpan.textContent = i + 1;
+        const emailSpan = document.createElement('span');
+        emailSpan.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        emailSpan.textContent = s.email;
+        // Up/Down arrow buttons
+        const upBtn = document.createElement('button');
+        upBtn.className = 'btn btn--ghost btn--sm';
+        upBtn.style.cssText = 'padding:2px 6px;font-size:.85rem;line-height:1';
+        upBtn.title = t('send.signers.up');
+        upBtn.textContent = '▲';
+        upBtn.disabled = i === 0;
+        if (i === 0) upBtn.style.opacity = '.3';
+        upBtn.addEventListener('click', () => moveSigner(i, -1));
+        const downBtn = document.createElement('button');
+        downBtn.className = 'btn btn--ghost btn--sm';
+        downBtn.style.cssText = 'padding:2px 6px;font-size:.85rem;line-height:1';
+        downBtn.title = t('send.signers.down');
+        downBtn.textContent = '▼';
+        downBtn.disabled = i === signersList.length - 1;
+        if (i === signersList.length - 1) downBtn.style.opacity = '.3';
+        downBtn.addEventListener('click', () => moveSigner(i, +1));
+        const rmBtn = document.createElement('button');
+        rmBtn.className = 'btn btn--ghost btn--sm';
+        rmBtn.style.cssText = 'padding:2px 8px;font-size:.75rem';
+        rmBtn.textContent = '×';
+        rmBtn.addEventListener('click', () => removeSigner(i));
+        el.append(numSpan, emailSpan, upBtn, downBtn, rmBtn);
+        list.appendChild(el);
+      });
+    }
+
+    // Move signer up/down, reindex fields' "for" references
+    function moveSigner(i, dir) {
+      const j = i + dir;
+      if (j < 0 || j >= signersList.length) return;
+      [signersList[i], signersList[j]] = [signersList[j], signersList[i]];
+      signersList.forEach((s, k) => s.order = k + 1);
+      // Swap field assignments: signer:i <-> signer:j
+      const SWAP_PLACEHOLDER = '__SWAP__';
+      fields.forEach(f => {
+        if (f.for === `signer:${i}`) f.for = SWAP_PLACEHOLDER;
+        else if (f.for === `signer:${j}`) f.for = `signer:${i}`;
+      });
+      fields.forEach(f => { if (f.for === SWAP_PLACEHOLDER) f.for = `signer:${j}`; });
+      // Fix currentSigner if it was on swapped indexes
+      if (currentSigner === `signer:${i}`) currentSigner = `signer:${j}`;
+      else if (currentSigner === `signer:${j}`) currentSigner = `signer:${i}`;
+      renderSignersEdit();
+      renderSignerList();
+      updateSignerSelector();
+      // Re-render fields on current page (colors changed)
+      document.querySelectorAll('.sign-field').forEach(e => e.remove());
+      fields.filter(f => f.page === curPage).forEach(f => createFieldEl(f));
+      autoSave();
+    }
+
+    // Step 3 readonly list
     function renderSignerList() {
       const list = document.getElementById('signerList');
+      if (!list) return;
       list.innerHTML = '';
       signersList.forEach((s, i) => {
         const el = document.createElement('div');
         el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-e);border:1px solid var(--bd);border-radius:6px;font-size:.85rem';
-        el.innerHTML = `
-          <span style="font-weight:600;color:var(--ac);font-size:.75rem;width:20px">${s.order}.</span>
-          <span style="flex:1">${esc(s.email)}</span>
-          <button class="btn btn--ghost btn--sm" data-rm="${i}" style="padding:2px 6px;font-size:.7rem">x</button>
-        `;
-        el.querySelector('[data-rm]').addEventListener('click', () => {
-          signersList.splice(i, 1);
-          signersList.forEach((s, j) => s.order = j + 1);
-          renderSignerList();
-        });
+        const numSpan = document.createElement('span');
+        numSpan.style.cssText = `font-weight:700;font-size:.7rem;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;background:${signerColor(i)};flex-shrink:0`;
+        numSpan.textContent = i + 1;
+        const emailSpan = document.createElement('span');
+        emailSpan.style.flex = '1';
+        emailSpan.textContent = s.email;
+        el.append(numSpan, emailSpan);
         list.appendChild(el);
       });
-      // Show bulk send card for PRO users
       const user = Signy.getUser();
-      if (user?.plan === 'pro') document.getElementById('bulkSendCard').style.display = 'block';
+      if (user?.plan === 'pro') {
+        document.getElementById('bulkSendCard').style.display = 'block';
+        document.getElementById('customSubjectGroup').style.display = 'flex';
+      }
     }
+
+    // Step 2 dynamic selector
+    function updateSignerSelector() {
+      const sel = document.getElementById('signerSelect');
+      if (!sel) return;
+      sel.innerHTML = '';
+      const mk = (forKey, label, color, active) => {
+        const b = document.createElement('button');
+        b.className = 'signer-btn' + (active ? ' signer-btn--active' : '');
+        b.dataset.for = forKey;
+        if (color) {
+          b.style.borderColor = color;
+          if (active) { b.style.background = color; b.style.color = '#fff'; }
+        }
+        b.innerHTML = label;
+        b.addEventListener('click', () => {
+          currentSigner = forKey;
+          updateSignerSelector();
+        });
+        sel.appendChild(b);
+      };
+      // Self button
+      mk('self',
+        `<span style="opacity:.7;margin-right:4px">${t('send.field.self.short')}</span>${esc(t('send.signer.self'))}`,
+        '#888', currentSigner === 'self');
+      // One per signer
+      signersList.forEach((s, i) => {
+        const forKey = `signer:${i}`;
+        const name = s.email.split('@')[0];
+        mk(forKey,
+          `<span style="font-weight:700;margin-right:4px">${i+1}</span>${esc(name)}`,
+          signerColor(i), currentSigner === forKey);
+      });
+    }
+
+    // Enable "Next" only when PDF + at least 1 signer
+    function updateS1Next() {
+      const btn = document.getElementById('toS2');
+      if (btn) btn.disabled = !pdfFile || signersList.length === 0;
+    }
+
+    // Step 1 add signer button + Enter key
+    document.getElementById('addSignerS1').addEventListener('click', () => {
+      const input = document.getElementById('newSignerEmailS1');
+      if (addSigner(input.value)) input.value = '';
+    });
+    document.getElementById('newSignerEmailS1').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSignerS1').click(); }
+    });
 
     // CSV bulk send
     const csvInput = document.getElementById('csvInput');
@@ -582,6 +1139,8 @@
         fd.append('title', title);
         fd.append('message', msg);
         fd.append('csv', csvText);
+        const customSubjectBulk = document.getElementById('customSubject')?.value?.trim();
+        if (customSubjectBulk) fd.append('customSubject', customSubjectBulk);
         fd.append('signFields', JSON.stringify(fields.map(f => ({
           type:f.type, page:f.page,
           x:Math.round(f.x/scale), y:Math.round(f.y/scale),
@@ -589,13 +1148,106 @@
           for:f.for, label:f.label, required:f.required,
         }))));
         const res = await api('/documents/bulk-send', { method:'POST', body:fd, headers:{} });
-        toast(`${res.sent}${t('toast.bulk.sent')}`, 'success');
+        clearDraft();toast(`${res.sent}${t('toast.bulk.sent')}`, 'success');
         setTimeout(() => location.href = '/', 2000);
       } catch(e) {
         toast(e.message || t('err'), 'error');
         btn.disabled = false; btn.textContent = t('send.bulk.btn');
       }
     });
+
+    // ============================================================
+    // PREVIEW MODAL — show how each signer will see the PDF
+    // ============================================================
+    let previewSignerKey = 'signer:0';
+    let previewPage = 1;
+
+    document.getElementById('previewBtn').addEventListener('click', async () => {
+      if (!pdfFile || !signersList.length || !fields.length) {
+        toast(t('toast.field.min'), 'error'); return;
+      }
+      previewSignerKey = `signer:0`;
+      previewPage = 1;
+      document.getElementById('previewModal').style.display = 'flex';
+      renderPreviewTabs();
+      await renderPreviewPage();
+    });
+
+    document.getElementById('closePreviewBtn').addEventListener('click', () => {
+      document.getElementById('previewModal').style.display = 'none';
+    });
+    document.getElementById('previewModal').addEventListener('click', (e) => {
+      if (e.target.id === 'previewModal') document.getElementById('previewModal').style.display = 'none';
+    });
+    document.getElementById('previewPrev').addEventListener('click', async () => {
+      if (previewPage > 1) { previewPage--; await renderPreviewPage(); }
+    });
+    document.getElementById('previewNext').addEventListener('click', async () => {
+      if (previewPage < totalPages) { previewPage++; await renderPreviewPage(); }
+    });
+
+    function renderPreviewTabs(){
+      const tabs = document.getElementById('previewTabs');
+      tabs.innerHTML = '';
+      signersList.forEach((s, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const key = `signer:${i}`;
+        btn.className = 'preview-tab' + (previewSignerKey === key ? ' preview-tab--active' : '');
+        btn.style.borderColor = signerColor(i);
+        if (previewSignerKey === key) btn.style.background = signerColor(i);
+        btn.innerHTML = `<span style="font-weight:700;margin-right:4px">${i+1}</span>${esc(s.email.split('@')[0])}`;
+        btn.addEventListener('click', async () => {
+          previewSignerKey = key;
+          renderPreviewTabs();
+          await renderPreviewPage();
+        });
+        tabs.appendChild(btn);
+      });
+    }
+
+    async function renderPreviewPage(){
+      const wrap = document.getElementById('previewPdfWrap');
+      wrap.innerHTML = '';
+      const stage = document.createElement('div');
+      stage.className = 'preview-modal__pdf-stage';
+      wrap.appendChild(stage);
+      const previewScale = 0.9;
+      const page = await pdfDoc.getPage(previewPage);
+      const vp = page.getViewport({scale: previewScale});
+      const cv = document.createElement('canvas');
+      cv.width = vp.width; cv.height = vp.height;
+      stage.appendChild(cv);
+      await page.render({canvasContext: cv.getContext('2d'), viewport: vp}).promise;
+      // Overlay fields for current page
+      fields.filter(f => f.page === previewPage).forEach(f => {
+        const fEl = document.createElement('div');
+        fEl.className = 'preview-field';
+        const isAssigned = f.for === previewSignerKey;
+        const isReadonly = !isAssigned; // self or other signer
+        if (isReadonly) fEl.classList.add('preview-field--readonly');
+        let color = '#888';
+        if (f.for?.startsWith('signer:')) color = signerColor(parseInt(f.for.split(':')[1]));
+        fEl.style.borderColor = color;
+        fEl.style.background = hexToRgba(color, isReadonly ? 0.05 : 0.2);
+        fEl.style.color = isReadonly ? '#888' : color;
+        // Coordinates: f.x/f.y are in canvas px (scale=1.5), convert to preview scale
+        const ratio = previewScale / scale;
+        fEl.style.left = (f.x * ratio) + 'px';
+        fEl.style.top = (f.y * ratio) + 'px';
+        fEl.style.width = (f.w * ratio) + 'px';
+        fEl.style.height = (f.h * ratio) + 'px';
+        fEl.textContent = isAssigned ? esc(f.label) : '';
+        stage.appendChild(fEl);
+      });
+      // Update signer name display
+      const idx = parseInt(previewSignerKey.split(':')[1]);
+      document.getElementById('previewSignerName').textContent = signersList[idx]?.email || '';
+      // Page indicator
+      document.getElementById('previewPageInd').textContent = `${t('send.page')} ${previewPage} / ${totalPages}`;
+      document.getElementById('previewPrev').disabled = previewPage <= 1;
+      document.getElementById('previewNext').disabled = previewPage >= totalPages;
+    }
 
     // Send (single / multi-signer)
     document.getElementById('sendBtn').addEventListener('click',async()=>{
@@ -604,12 +1256,25 @@
       if(!title){toast(t('toast.title.req'),'error');return}
       if(!signersList.length){toast(t('toast.signer.req'),'error');return}
 
+      // Validate: each signer must have at least one field assigned
+      const missing = [];
+      signersList.forEach((s, i) => {
+        const hasField = fields.some(f => f.for === `signer:${i}`);
+        if (!hasField) missing.push(i + 1);
+      });
+      if (missing.length) {
+        toast(`${t('toast.signer.nofield')} #${missing.join(', #')}`, 'error');
+        return;
+      }
+
       const btn=document.getElementById('sendBtn');btn.disabled=true;
       btn.querySelector('span').textContent=t('send.sending');
 
       try{
         const fd=new FormData();fd.append('pdf',pdfFile);fd.append('title',title);
         fd.append('message',msg);
+        const customSubject = document.getElementById('customSubject')?.value?.trim();
+        if (customSubject) fd.append('customSubject', customSubject);
         fd.append('signers',JSON.stringify(signersList));
         fd.append('signFields',JSON.stringify(fields.map(f=>({
           type:f.type, page:f.page,
@@ -619,7 +1284,7 @@
         }))));
         const res=await api('/documents/upload',{method:'POST',body:fd,headers:{}});
         await api('/documents/send',{method:'POST',body:JSON.stringify({documentId:res.id})});
-        toast(t('toast.sent'),'success');
+        clearDraft();toast(t('toast.sent'),'success');
         setTimeout(()=>location.href='/',1500);
       }catch(e){
         toast(e.message||t('err'),'error');btn.disabled=false;

@@ -489,7 +489,8 @@
     ag.addEventListener('change',chk);
     function chk(){
       if(!docData?.signFields){document.getElementById('signBtn').disabled=true;return}
-      const signerFields=docData.signFields.filter(f=>f.for!=='self');
+      // Only check fields assigned to current signer (not readonly)
+      const signerFields=docData.signFields.filter(f=>!f._readonly);
       const allFilled=signerFields.every((f,i)=>{
         const v=fieldValues[docData.signFields.indexOf(f)];
         if(!v) return !f.required;

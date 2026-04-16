@@ -367,7 +367,7 @@
 
     // Upload
     const zone=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
-    zone.addEventListener('click',()=>fi.click());
+    zone.addEventListener('click',(e)=>{ if(e.target===fi)return; fi.click(); });
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('upload-zone--active')});
     zone.addEventListener('dragleave',()=>zone.classList.remove('upload-zone--active'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('upload-zone--active');if(e.dataTransfer.files.length)handle(e.dataTransfer.files[0])});

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <style>
+      .brand { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 700; }
+      .title { font-family: 'Noto Serif JP', 'Hiragino Mincho ProN', serif; font-weight: 600; }
+      .meta  { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 400; }
+      .sub   { font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
+    </style>
+  </defs>
+  <rect width="1200" height="630" fill="#fafaf7"/>
+  <rect x="60" y="60" width="1080" height="510" fill="none" stroke="#0a0a0a" stroke-width="2"/>
+  <line x1="60" y1="130" x2="1140" y2="130" stroke="#0a0a0a" stroke-width="1"/>
+  <line x1="60" y1="500" x2="1140" y2="500" stroke="#0a0a0a" stroke-width="1"/>
+
+  <text x="90" y="108" class="brand" font-size="28" fill="#0a0a0a">SIGNY</text>
+  <text x="1110" y="108" class="meta" font-size="18" fill="#666" text-anchor="end">電子署名</text>
+
+  <text x="600" y="280" class="title" font-size="56" fill="#0a0a0a" text-anchor="middle">Signy vs Dropbox S</text>
+  <text x="600" y="348" class="title" font-size="56" fill="#0a0a0a" text-anchor="middle">ign</text>
+
+  <text x="600" y="460" class="sub" font-size="22" fill="#666" text-anchor="middle">Dropbox, Inc.</text>
+
+  <text x="90" y="540" class="meta" font-size="18" fill="#666">無料・ブラウザ完結</text>
+  <text x="1110" y="540" class="meta" font-size="18" fill="#666" text-anchor="end">mamonis.studio</text>
+</svg>

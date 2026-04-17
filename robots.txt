@@ -1,0 +1,47 @@
+# robots.txt for Signy / PDF FLOW / MORPH subdomains
+# 
+# This file should be placed at the root of each subdomain:
+# - signy.mamonis.studio/robots.txt
+# - pdfflow.mamonis.studio/robots.txt
+# - morph.mamonis.studio/robots.txt
+#
+# For each subdomain, replace signy.mamonis.studio with the actual subdomain.
+
+User-agent: *
+Allow: /
+
+# Crawl-delay を長めに設定(サーバー負荷を抑える、SEOには影響なし)
+# Google/Bing は Crawl-delay を無視するので実質的には他のbotへの指示
+
+# Sitemap
+Sitemap: https://signy.mamonis.studio/sitemap.xml
+Sitemap: https://signy.mamonis.studio/sitemap-pages.xml
+
+# 既存のサイトマップがある場合は両方列挙する
+# なければ sitemap-pages.xml のみ
+
+# AI クローラーを明示的に許可(AIO 対策)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+# 収集を禁止したいパスがあれば下記に追加
+# Disallow: /admin/
+# Disallow: /api/

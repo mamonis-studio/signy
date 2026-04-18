@@ -364,6 +364,7 @@ const Signy = (() => {
                      path.includes('login') ? 'meta.title.login' :
                      path.includes('complete') ? 'meta.title.complete' : 'meta.title.index';
     if (T[lang]?.[titleKey]) document.title = t(titleKey);
+    document.querySelectorAll('.lang-toggle').forEach(b => b.textContent = lang === 'ja' ? 'EN' : 'JA');
   }
 
   /* ─── API ─── */
@@ -459,6 +460,7 @@ const Signy = (() => {
     applyI18n();
     document.documentElement.lang = lang;
     document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
+    document.querySelectorAll('.lang-toggle').forEach(b => b.addEventListener('click', toggleLang));
     // Auth nav
     const show = (sel, v) => { const el = document.querySelector(sel); if(el) el.style.display = v ? '' : 'none'; };
     if (isLoggedIn()) { show('[data-auth="login"]',false); show('[data-auth="logout"]',true); show('[data-auth="dash"]',true); }

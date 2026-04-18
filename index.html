@@ -19,6 +19,30 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
   <script>(function(){var t=localStorage.getItem("signy-theme");if(!t)t=matchMedia("(prefers-color-scheme:light)").matches?"light":"dark";document.documentElement.setAttribute("data-theme",t)})()</script>
   <link rel="stylesheet" href="/css/style.css">
+  <meta property="og:title" content="Signy — 月550円で電子署名し放題">
+  <meta property="og:description" content="フリーランス・中小企業向けの電子署名サービス。月額550円で署名無制限。PDF完全クライアント処理でプライバシー保護。電子帳簿保存法対応。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://signy.mamonis.studio/">
+  <meta property="og:site_name" content="Signy">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://signy.mamonis.studio/">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"SoftwareApplication",
+    "name":"Signy",
+    "applicationCategory":"BusinessApplication",
+    "operatingSystem":"Web",
+    "url":"https://signy.mamonis.studio/",
+    "description":"フリーランス・中小企業向け電子署名サービス。月額550円（税込）で署名無制限。",
+    "offers":[
+      {"@type":"Offer","name":"FREE","price":"0","priceCurrency":"JPY","description":"月5件まで無料"},
+      {"@type":"Offer","name":"PRO","price":"550","priceCurrency":"JPY","description":"月額550円・署名無制限"}
+    ],
+    "featureList":["電子署名","電子印鑑","複数署名者ワークフロー","テンプレート","CSV一括送信","監査証跡","電子帳簿保存法対応"],
+    "provider":{"@type":"Organization","name":"mamonis.studio","url":"https://mamonis.studio"}
+  }
+  </script>
 </head>
 <body>
   <header class="header"><div class="header__inner">
@@ -115,6 +139,23 @@
       </div></section>
     </div>
   </main>
+
+  <!-- Use case internal links (SEO) -->
+  <section class="container" style="padding-bottom:40px" id="useCaseLinks">
+    <h3 style="font-size:.85rem;color:var(--txm);margin-bottom:16px;text-transform:uppercase;letter-spacing:.05em">Use Cases</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <a href="/use/freelance.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">フリーランス</a>
+      <a href="/use/nda.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">NDA・秘密保持契約</a>
+      <a href="/use/gyomu-itaku.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">業務委託契約</a>
+      <a href="/use/kojin.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">個人事業主</a>
+      <a href="/use/free-sign.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">無料プラン</a>
+      <a href="/use/compare.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">サービス比較</a>
+      <a href="/use/e-books-act.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">電子帳簿保存法</a>
+      <a href="/use/stamp.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">電子印鑑</a>
+      <a href="/use/small-biz.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">中小企業</a>
+      <a href="/use/multiple-signers.html" style="font-size:.8rem;color:var(--tx2);padding:6px 14px;border:1px solid var(--bd);border-radius:100px;text-decoration:none;transition:all .2s">複数人署名</a>
+    </div>
+  </section>
 
   <footer class="footer">
     <p class="footer__text" data-i18n="footer"></p>

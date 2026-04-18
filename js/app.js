@@ -43,7 +43,7 @@ const Signy = (() => {
       'send.s1':'アップロード','send.s2':'署名欄配置','send.s3':'送信',
       'send.up':'PDFファイルをドラッグ&ドロップ、またはクリックして選択',
       'send.up.h':'PDF形式 / FREEプラン: 10MBまで・月5件 / PROプラン: 50MBまで・無制限',
-      'send.add':'署名欄を追加','send.page':'ページ','send.field':'署名欄',
+      'send.add':'署名欄を追加','send.page':'ページ','send.page.jump':'クリックでページ指定','send.field':'署名欄',
       'send.det':'署名者情報','send.email':'署名者のメールアドレス','send.email.ph':'signer@example.com',
       'send.doc':'ドキュメント名','send.doc.ph':'業務委託契約書',
       'send.amount':'契約金額','send.amount.optional':'（任意）','send.amount.ph':'例: 100000','send.amount.hint':'金額のない契約は空欄のままで構いません。電子帳簿保存法の検索要件に対応するための項目です。',
@@ -203,7 +203,7 @@ const Signy = (() => {
       'send.s1':'Upload','send.s2':'Place Fields','send.s3':'Send',
       'send.up':'Drag & drop a PDF, or click to browse',
       'send.up.h':'PDF / Free: up to 10MB, 5 docs/mo / Pro: up to 50MB, unlimited',
-      'send.add':'Add Signature Field','send.page':'Page','send.field':'Signature',
+      'send.add':'Add Signature Field','send.page':'Page','send.page.jump':'Click to jump to page','send.field':'Signature',
       'send.det':'Signer Details','send.email':'Signer\'s Email','send.email.ph':'signer@example.com',
       'send.doc':'Document Title','send.doc.ph':'Service Agreement',
       'send.amount':'Contract Amount','send.amount.optional':'(optional)','send.amount.ph':'e.g. 100000','send.amount.hint':'Leave blank for contracts without a monetary value. Used for e-Books Act search compliance.',
@@ -332,7 +332,12 @@ const Signy = (() => {
     }
   };
 
-  let lang = localStorage.getItem('signy-lang') || 'ja';
+  let lang = localStorage.getItem('signy-lang');
+  if (!lang) {
+    // Auto-detect: if browser is not Japanese, default to English
+    const browserLang = (navigator.language || navigator.userLanguage || 'ja').toLowerCase();
+    lang = browserLang.startsWith('ja') ? 'ja' : 'en';
+  }
 
   function t(k){ return T[lang]?.[k] || T.ja?.[k] || k; }
 
@@ -351,7 +356,6 @@ const Signy = (() => {
         if (attr && k) el.setAttribute(attr.trim(), t(k.trim()));
       });
     });
-    document.querySelectorAll('.lang-toggle').forEach(b => b.textContent = lang === 'ja' ? 'EN' : 'JA');
     // Update page title based on current path
     const path = location.pathname;
     const titleKey = path.includes('send') ? 'meta.title.send' :
@@ -454,7 +458,6 @@ const Signy = (() => {
     setTheme(getTheme());
     applyI18n();
     document.documentElement.lang = lang;
-    document.querySelectorAll('.lang-toggle').forEach(b => b.addEventListener('click', toggleLang));
     document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
     // Auth nav
     const show = (sel, v) => { const el = document.querySelector(sel); if(el) el.style.display = v ? '' : 'none'; };

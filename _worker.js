@@ -92,6 +92,8 @@ async function sha256(buf){return[...new Uint8Array(await crypto.subtle.digest('
 
 const emailWrap=body=>`<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px">${body}<hr style="border:none;border-top:1px solid #eee;margin:32px 0 16px"><p style="color:#bbb;font-size:11px">Powered by <a href="https://signy.mamonis.studio" style="color:#bbb">Signy</a> — mamonis.studio</p></div>`;
 const acBtn=(href,text)=>`<a href="${href}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0;font-size:15px">${text}</a>`;
+// Bilingual email: JA block + EN block with divider (for signer-facing emails)
+const biEmail=(ja,en)=>`${ja}<div style="margin:24px 0;border-top:1px solid #e8e8e8"></div><p style="color:#aaa;font-size:11px;margin-bottom:8px">English</p>${en}`;
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const validEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const clamp=(s,max)=>typeof s==='string'?s.slice(0,max):s;
@@ -153,8 +155,12 @@ async function authMagic(req,env,C){
   if(!userId){userId=`user_${uid()}`;await env.SIGNY_KV.put(`email:${email}`,userId);await env.SIGNY_KV.put(`user:${userId}`,JSON.stringify({id:userId,email,plan:'free',createdAt:new Date().toISOString()}))}
   const tk=await mkTk({userId,email,type:'magic',exp:Date.now()+15*6e4},SEC(env));
   await env.SIGNY_KV.put(`magic:${tk}`,userId,{expirationTtl:900});
-  const sent=await mail(env,email,'Signy ログインリンク',emailWrap(`<h2 style="margin:0 0 8px">Signy</h2><p style="color:#666;margin:16px 0">以下のボタンをクリックしてログインしてください（15分間有効）。</p>${acBtn(`${APP(env)}/login.html?token=${encodeURIComponent(tk)}`,'ログイン')}<p style="color:#999;font-size:12px;margin-top:16px">心当たりがない場合は無視してください。</p>`));
-  if(!sent)return J({error:'メール送信に失敗しました。しばらく後に再度お試しください。'},500,C);
+  const loginUrl=`${APP(env)}/login.html?token=${encodeURIComponent(tk)}`;
+  const sent=await mail(env,email,'Signy Login',emailWrap(biEmail(
+    `<h2 style="margin:0 0 8px">Signy</h2><p style="color:#666;margin:16px 0">以下のボタンをクリックしてログインしてください（15分間有効）。</p>${acBtn(loginUrl,'ログイン')}<p style="color:#999;font-size:12px;margin-top:16px">心当たりがない場合は無視してください。</p>`,
+    `<h2 style="margin:0 0 8px">Signy</h2><p style="color:#666;margin:16px 0">Click the button below to log in (valid for 15 minutes).</p>${acBtn(loginUrl,'Log In')}<p style="color:#999;font-size:12px;margin-top:16px">If you did not request this, please ignore this email.</p>`
+  )));
+  if(!sent)return J({error:'Email sending failed. Please try again later.'},500,C);
   return J({ok:true},200,C);
 }
 async function authVerify(req,env,C){
@@ -233,7 +239,11 @@ async function docSend(req,env,C){
   for(const signer of toNotify){
     const signUrl=`${APP(env)}/sign.html?id=${doc.id}&token=${signer.signToken}`;
     const orderInfo=doc.workflowEnabled?`<p style="color:#999;font-size:13px">署名順序: ${signer.order}/${doc.signers.length}番目</p>`:'';
-    await mail(env,signer.email,doc.customSubject || `【Signy】署名のお願い - ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(doc.ownerEmail)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p>${orderInfo}${doc.message?`<div style="color:#666;margin:12px 0;padding:12px 16px;background:#f5f5f5;border-radius:8px;font-size:14px">${esc(doc.message).replace(/\n/g,'<br>')}</div>`:''}${acBtn(signUrl,'署名する')}`));
+    const orderInfoEn=doc.workflowEnabled?`<p style="color:#999;font-size:13px">Signing order: ${signer.order} of ${doc.signers.length}</p>`:'';
+    const msgBlock=doc.message?`<div style="color:#666;margin:12px 0;padding:12px 16px;background:#f5f5f5;border-radius:8px;font-size:14px">${esc(doc.message).replace(/\n/g,'<br>')}</div>`:'';
+    const jaBody=`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(doc.ownerEmail)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p>${orderInfo}${msgBlock}${acBtn(signUrl,'署名する')}`;
+    const enBody=`<h2 style="margin:0 0 8px">Signature Request</h2><p style="color:#666;margin:12px 0"><strong>${esc(doc.ownerEmail)}</strong> has requested your signature.</p><p style="color:#666">Document: <strong>${esc(doc.title)}</strong></p>${orderInfoEn}${msgBlock}${acBtn(signUrl,'Sign Now')}`;
+    await mail(env,signer.email,doc.customSubject || `【Signy】署名のお願い / Signature Request - ${doc.title}`,emailWrap(biEmail(jaBody,enBody)));
   }
   await auditLog(env,documentId,'sent',{to:toNotify.map(s=>s.email)});
   return J({ok:true,sentTo:toNotify.map(s=>s.email)},200,C);
@@ -243,7 +253,7 @@ async function docSend(req,env,C){
 async function docBulkSend(req,env,C){
   const u=await auth(req,env,C);
   const userData=await env.SIGNY_KV.get(`user:${u.userId}`,'json');
-  if(userData?.plan!=='pro')return J({error:'一括送信はPROプラン限定です'},403,C);
+  if(userData?.plan!=='pro')return J({error:'Bulk send requires PRO plan'},403,C);
   const fd=await req.formData();
   const pdf=fd.get('pdf'),title=clamp(fd.get('title')||'Untitled',200),message=clamp(fd.get('message')||'',2000),csvText=fd.get('csv')||'';
   const customSubject=clamp((fd.get('customSubject')||'').replace(/[\r\n]/g,''),100);
@@ -275,7 +285,10 @@ async function docBulkSend(req,env,C){
     uDocs.push(docId);
     await env.SIGNY_KV.put(`pending:${docId}`,'1',{expirationTtl:EXPIRY.pro*86400+86400});
     const signUrl=`${APP(env)}/sign.html?id=${docId}&token=${signToken}`;
-    await mail(env,r.email,customSubject||`【Signy】署名のお願い - ${title}`,emailWrap(`<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(u.email)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(title)}</strong></p>${acBtn(signUrl,'署名する')}`));
+    await mail(env,r.email,customSubject||`【Signy】署名のお願い / Signature Request - ${title}`,emailWrap(biEmail(
+      `<h2 style="margin:0 0 8px">署名のお願い</h2><p style="color:#666;margin:12px 0"><strong>${esc(u.email)}</strong> さんから署名依頼が届いています。</p><p style="color:#666">ドキュメント: <strong>${esc(title)}</strong></p>${acBtn(signUrl,'署名する')}`,
+      `<h2 style="margin:0 0 8px">Signature Request</h2><p style="color:#666;margin:12px 0"><strong>${esc(u.email)}</strong> has requested your signature.</p><p style="color:#666">Document: <strong>${esc(title)}</strong></p>${acBtn(signUrl,'Sign Now')}`
+    )));
     usage.count++;results.push({email:r.email,docId,status:'sent'});
     await auditLog(env,docId,'bulk_sent',{batchId,to:r.email});
   }
@@ -296,7 +309,7 @@ async function docGet(docId,url,env,C,req){
   if(signer.status==='signed')return J({error:'already_signed'},409,C);
   if(doc.workflowEnabled){
     const pendingBefore=doc.signers.filter(s=>s.order<signer.order&&s.status!=='signed');
-    if(pendingBefore.length>0)return J({error:'waiting',message:'前の署名者の完了を待っています',queue:signer.order,total:doc.signers.length},200,C);
+    if(pendingBefore.length>0)return J({error:'waiting',message:'Waiting for previous signer to complete',queue:signer.order,total:doc.signers.length},200,C);
   }
   await auditLog(env,docId,'opened',ci(req));
   // Filter fields: signer sees only their own fields (signer:N where N = their index)
@@ -348,15 +361,21 @@ async function docSign(docId,req,env,C){
     await env.SIGNY_KV.delete(`pending:${docId}`);
     // Notify everyone
     const dlUrl=`${APP(env)}/api/documents/${docId}/download?token=${doc.signers[0].signToken}`;
-    const signerList=doc.signers.map(s=>`<p style="color:#333;font-size:13px;margin:4px 0">${esc(s.email)} — ${new Date(s.signedAt).toLocaleString('ja-JP')}</p>`).join('');
-    const body=emailWrap(`<h2 style="margin:0 0 8px">署名が完了しました</h2><p style="color:#666;margin:12px 0">ドキュメント: <strong>${esc(doc.title)}</strong></p><div style="margin:16px 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">${signerList}</div><p style="color:#666;font-size:13px">証跡（監査ログ）付きPDFをダウンロードできます。</p>${acBtn(dlUrl,'署名済みPDFをダウンロード')}`);
-    await mail(env,doc.ownerEmail,`【Signy】署名完了 - ${doc.title}`,body);
-    for(const s of doc.signers)await mail(env,s.email,`【Signy】署名完了 - ${doc.title}`,body);
+    const signerList=doc.signers.map(s=>`<p style="color:#333;font-size:13px;margin:4px 0">${esc(s.email)} — ${new Date(s.signedAt).toISOString().replace('T',' ').slice(0,19)} UTC</p>`).join('');
+    const body=emailWrap(biEmail(
+      `<h2 style="margin:0 0 8px">署名が完了しました</h2><p style="color:#666;margin:12px 0">ドキュメント: <strong>${esc(doc.title)}</strong></p><div style="margin:16px 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">${signerList}</div><p style="color:#666;font-size:13px">証跡（監査ログ）付きPDFをダウンロードできます。</p>${acBtn(dlUrl,'署名済みPDFをダウンロード')}`,
+      `<h2 style="margin:0 0 8px">Signing Complete</h2><p style="color:#666;margin:12px 0">Document: <strong>${esc(doc.title)}</strong></p><div style="margin:16px 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">${signerList}</div><p style="color:#666;font-size:13px">A signed PDF with audit trail is available for download.</p>${acBtn(dlUrl,'Download Signed PDF')}`
+    ));
+    await mail(env,doc.ownerEmail,`【Signy】署名完了 / Signed - ${doc.title}`,body);
+    for(const s of doc.signers)await mail(env,s.email,`【Signy】署名完了 / Signed - ${doc.title}`,body);
   } else if(doc.workflowEnabled){
     const next=doc.signers.filter(s=>s.status==='pending').sort((a,b)=>a.order-b.order)[0];
     if(next){
       const signUrl=`${APP(env)}/sign.html?id=${doc.id}&token=${next.signToken}`;
-      await mail(env,next.email,`【Signy】署名のお願い - ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名の順番です</h2><p style="color:#666;margin:12px 0">前の署名者が完了しました。あなたの署名の番です。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p><p style="color:#999;font-size:13px">署名順序: ${next.order}/${doc.signers.length}番目</p>${acBtn(signUrl,'署名する')}`));
+      await mail(env,next.email,`【Signy】署名のお願い / Signature Request - ${doc.title}`,emailWrap(biEmail(
+        `<h2 style="margin:0 0 8px">署名の順番です</h2><p style="color:#666;margin:12px 0">前の署名者が完了しました。あなたの署名の番です。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p><p style="color:#999;font-size:13px">署名順序: ${next.order}/${doc.signers.length}番目</p>${acBtn(signUrl,'署名する')}`,
+        `<h2 style="margin:0 0 8px">Your Turn to Sign</h2><p style="color:#666;margin:12px 0">The previous signer has completed. It's your turn now.</p><p style="color:#666">Document: <strong>${esc(doc.title)}</strong></p><p style="color:#999;font-size:13px">Signing order: ${next.order} of ${doc.signers.length}</p>${acBtn(signUrl,'Sign Now')}`
+      )));
       await auditLog(env,docId,'workflow_next',{nextSigner:next.email,order:next.order});
     }
   }
@@ -370,11 +389,14 @@ async function docRemind(docId,req,env,C){
   if(doc.status!=='pending')return J({error:'Not pending'},400,C);
   // Throttle: max 1 manual reminder per hour per document
   const lastRemind=doc.signers.reduce((latest,s)=>Math.max(latest,s.lastReminderAt?new Date(s.lastReminderAt).getTime():0),0);
-  if(lastRemind&&(Date.now()-lastRemind)<3600000)return J({error:'リマインダーは1時間に1回まで送信できます'},429,C);
+  if(lastRemind&&(Date.now()-lastRemind)<3600000)return J({error:'Reminders are limited to once per hour'},429,C);
   const pending=doc.signers.filter(s=>s.status==='pending');
   for(const s of pending){
     const signUrl=`${APP(env)}/sign.html?id=${doc.id}&token=${s.signToken}`;
-    await mail(env,s.email,`【Signy】リマインダー: ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名リマインダー</h2><p style="color:#666;margin:12px 0">まだ署名が完了していないドキュメントがあります。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p>${acBtn(signUrl,'今すぐ署名する')}`));
+    await mail(env,s.email,`【Signy】リマインダー / Reminder: ${doc.title}`,emailWrap(biEmail(
+      `<h2 style="margin:0 0 8px">署名リマインダー</h2><p style="color:#666;margin:12px 0">まだ署名が完了していないドキュメントがあります。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p>${acBtn(signUrl,'今すぐ署名する')}`,
+      `<h2 style="margin:0 0 8px">Signature Reminder</h2><p style="color:#666;margin:12px 0">You have a document awaiting your signature.</p><p style="color:#666">Document: <strong>${esc(doc.title)}</strong></p>${acBtn(signUrl,'Sign Now')}`
+    )));
     s.remindersSent=(s.remindersSent||0)+1;s.lastReminderAt=new Date().toISOString();
   }
   await env.SIGNY_KV.put(`doc:${docId}`,JSON.stringify(doc));
@@ -392,7 +414,10 @@ async function docCancel(docId,req,env,C){
   await auditLog(env,docId,'cancelled',{by:u.email});
   // Notify signers
   for(const s of doc.signers.filter(s=>s.status==='pending')){
-    await mail(env,s.email,`【Signy】署名依頼が取り消されました - ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名依頼の取り消し</h2><p style="color:#666;margin:12px 0">以下のドキュメントへの署名依頼が送信者により取り消されました。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p><p style="color:#999;font-size:12px;margin-top:16px">このリンクは無効になりました。</p>`));
+    await mail(env,s.email,`【Signy】取消 / Cancelled - ${doc.title}`,emailWrap(biEmail(
+      `<h2 style="margin:0 0 8px">署名依頼の取り消し</h2><p style="color:#666;margin:12px 0">以下のドキュメントへの署名依頼が送信者により取り消されました。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p><p style="color:#999;font-size:12px;margin-top:16px">このリンクは無効になりました。</p>`,
+      `<h2 style="margin:0 0 8px">Signature Request Cancelled</h2><p style="color:#666;margin:12px 0">The signature request for the following document has been cancelled by the sender.</p><p style="color:#666">Document: <strong>${esc(doc.title)}</strong></p><p style="color:#999;font-size:12px;margin-top:16px">This link is no longer valid.</p>`
+    )));
   }
   return J({ok:true},200,C);
 }
@@ -435,7 +460,10 @@ async function processReminders(env){
         if(r===1&&daysSince>=7)send=true;
         if(send){
           const signUrl=`${APP(env)}/sign.html?id=${doc.id}&token=${s.signToken}`;
-          await mail(env,s.email,`【Signy】リマインダー: ${doc.title}`,emailWrap(`<h2 style="margin:0 0 8px">署名リマインダー</h2><p style="color:#666;margin:12px 0">まだ署名が完了していません。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p><p style="color:#666">送信者: ${esc(doc.ownerEmail)}</p>${acBtn(signUrl,'今すぐ署名する')}<p style="color:#999;font-size:12px;margin-top:16px">有効期限: ${new Date(doc.expiresAt).toLocaleDateString('ja-JP')}</p>`));
+          await mail(env,s.email,`【Signy】リマインダー / Reminder: ${doc.title}`,emailWrap(biEmail(
+            `<h2 style="margin:0 0 8px">署名リマインダー</h2><p style="color:#666;margin:12px 0">まだ署名が完了していません。</p><p style="color:#666">ドキュメント: <strong>${esc(doc.title)}</strong></p><p style="color:#666">送信者: ${esc(doc.ownerEmail)}</p>${acBtn(signUrl,'今すぐ署名する')}<p style="color:#999;font-size:12px;margin-top:16px">有効期限: ${new Date(doc.expiresAt).toLocaleDateString('ja-JP')}</p>`,
+            `<h2 style="margin:0 0 8px">Signature Reminder</h2><p style="color:#666;margin:12px 0">Your signature is still pending.</p><p style="color:#666">Document: <strong>${esc(doc.title)}</strong></p><p style="color:#666">From: ${esc(doc.ownerEmail)}</p>${acBtn(signUrl,'Sign Now')}<p style="color:#999;font-size:12px;margin-top:16px">Expires: ${new Date(doc.expiresAt).toLocaleDateString('en-US')}</p>`
+          )));
           s.remindersSent=r+1;s.lastReminderAt=new Date().toISOString();
           await auditLog(env,doc.id,'auto_reminder',{to:s.email,num:s.remindersSent});
           docChanged=true;
@@ -484,7 +512,7 @@ async function templateList(req,env,C){
 async function templateCreate(req,env,C){
   const u=await auth(req,env,C);
   const userData=await env.SIGNY_KV.get(`user:${u.userId}`,'json');
-  if(userData?.plan==='free')return J({error:'テンプレート機能はPROプラン限定です'},403,C);
+  if(userData?.plan==='free')return J({error:'Templates require PRO plan'},403,C);
   const{name,fields}=await req.json();if(!name||!fields?.length)return J({error:'Missing fields'},400,C);
   const cleanName=clamp(name,100);
   const cleanFields=sanitizeFields(fields);

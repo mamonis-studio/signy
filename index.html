@@ -181,7 +181,10 @@
       }).join('')}</tr>`).join('');
     }
     renderCompTable();
-    document.querySelectorAll('.lang-toggle').forEach(b => b.addEventListener('click', () => setTimeout(renderCompTable, 10)));
+    document.querySelectorAll('.lang-toggle').forEach(b => b.addEventListener('click', () => setTimeout(() => {
+      renderCompTable();
+      if (window._dashData) { renderUsage(window._dashData); renderDocs(); }
+    }, 10)));
 
     Signy.applyI18n();
 
@@ -220,20 +223,9 @@
         const data = await api('/documents');
         document.getElementById('loading').style.display = 'none';
         if (!data.documents?.length) { document.getElementById('emptyState').style.display = 'block'; return; }
-        if (data.usage) {
-          const usageEl = document.getElementById('usageText');
-          const plan = data.plan || Signy.getUser()?.plan || 'free';
-          const limit = data.usage.limit >= 1e6 ? '\u221e' : data.usage.limit;
-          if (plan === 'pro') {
-            usageEl.innerHTML = `${t('dash.usage')}: ${data.usage.count} / ${limit} &nbsp;<a href="#" id="managePlanLink" style="font-size:.8rem;color:var(--txm)">${t('price.manage')}</a>`;
-            usageEl.querySelector('#managePlanLink').addEventListener('click', async (e) => {
-              e.preventDefault();
-              try { const r = await api('/stripe/portal',{method:'POST'}); if(r.url) location.href = r.url; } catch(err) { toast(err.message,'error'); }
-            });
-          } else {
-            usageEl.innerHTML = `${t('dash.usage')}: ${data.usage.count} / ${limit} &nbsp;<a href="/pricing.html" style="font-size:.8rem;color:var(--ac)">${t('dash.upgrade')}</a>`;
-          }
-        }
+        // Store dashboard state for re-rendering on lang change
+        window._dashData = data;
+        renderUsage(data);
         // Plan badge (inline with title)
         const badge = document.getElementById('planBadge');
         const plan = data.plan || Signy.getUser()?.plan || 'free';
@@ -264,6 +256,22 @@
       } catch {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('emptyState').style.display = 'block';
+      }
+    }
+
+    function renderUsage(data){
+      if(!data?.usage) return;
+      const usageEl = document.getElementById('usageText');
+      const plan = data.plan || Signy.getUser()?.plan || 'free';
+      const limit = data.usage.limit >= 1e6 ? '\u221e' : data.usage.limit;
+      if (plan === 'pro') {
+        usageEl.innerHTML = `${t('dash.usage')}: ${data.usage.count} / ${limit} &nbsp;<a href="#" id="managePlanLink" style="font-size:.8rem;color:var(--txm)">${t('price.manage')}</a>`;
+        usageEl.querySelector('#managePlanLink').addEventListener('click', async (e) => {
+          e.preventDefault();
+          try { const r = await api('/stripe/portal',{method:'POST'}); if(r.url) location.href = r.url; } catch(err) { toast(err.message,'error'); }
+        });
+      } else {
+        usageEl.innerHTML = `${t('dash.usage')}: ${data.usage.count} / ${limit} &nbsp;<a href="/pricing.html" style="font-size:.8rem;color:var(--ac)">${t('dash.upgrade')}</a>`;
       }
     }
 

@@ -431,10 +431,31 @@ const Signy = (() => {
   function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
   /* ─── Init ─── */
+  /* ─── Theme (dark/light) ─── */
+  function getTheme(){
+    const saved = localStorage.getItem('signy-theme');
+    if (saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  function setTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('signy-theme', t);
+    // Update toggle icon
+    document.querySelectorAll('.theme-toggle').forEach(b => {
+      b.innerHTML = t === 'light'
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+    });
+  }
+  function toggleTheme(){ setTheme(getTheme() === 'dark' ? 'light' : 'dark'); }
+
   function init(){
+    // Apply theme before anything else to prevent flash
+    setTheme(getTheme());
     applyI18n();
     document.documentElement.lang = lang;
     document.querySelectorAll('.lang-toggle').forEach(b => b.addEventListener('click', toggleLang));
+    document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
     // Auth nav
     const show = (sel, v) => { const el = document.querySelector(sel); if(el) el.style.display = v ? '' : 'none'; };
     if (isLoggedIn()) { show('[data-auth="login"]',false); show('[data-auth="logout"]',true); show('[data-auth="dash"]',true); }
@@ -442,7 +463,7 @@ const Signy = (() => {
     const m = document.querySelector('main'); if(m) m.classList.add('page-enter');
   }
 
-  return { CONFIG, t, setLang, toggleLang, applyI18n, api, getToken, setToken, clearToken, isLoggedIn, getUser, toast, I, Logo, genId, fmtDate, fmtSize, esc, init, get lang(){ return lang; } };
+  return { CONFIG, t, setLang, toggleLang, applyI18n, api, getToken, setToken, clearToken, isLoggedIn, getUser, toast, I, Logo, genId, fmtDate, fmtSize, esc, init, toggleTheme, get lang(){ return lang; } };
 })();
 
 document.addEventListener('DOMContentLoaded', () => Signy.init());

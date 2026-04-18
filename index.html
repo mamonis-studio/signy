@@ -17,6 +17,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#00e0a0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
+  <script>(function(){var t=localStorage.getItem("signy-theme");if(!t)t=matchMedia("(prefers-color-scheme:light)").matches?"light":"dark";document.documentElement.setAttribute("data-theme",t)})()</script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -27,6 +28,7 @@
       <a href="/send.html" class="header__link" data-auth="dash" data-i18n="nav.send"></a>
       <a href="/login.html" class="header__link" data-auth="login" data-i18n="nav.login"></a>
       <a href="#" class="header__link" data-auth="logout" id="logoutBtn" data-i18n="nav.logout"></a>
+      <button class="theme-toggle" aria-label="Toggle theme"></button>
       <button class="lang-toggle">EN</button>
     </nav>
   </div></header>
@@ -71,11 +73,11 @@
       <section class="dashboard"><div class="container">
         <div class="dashboard__header">
           <div>
-            <h1 class="dashboard__title" data-i18n="dash.title"></h1>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap">
-              <p class="text-muted" id="usageText"></p>
+            <div style="display:flex;align-items:center;gap:10px">
+              <h1 class="dashboard__title" data-i18n="dash.title"></h1>
               <span id="planBadge" style="display:none"></span>
             </div>
+            <p class="text-muted mt-8" id="usageText"></p>
           </div>
           <a href="/send.html" class="btn btn--primary" id="newBtn"></a>
         </div>
@@ -220,21 +222,29 @@
         const data = await api('/documents');
         document.getElementById('loading').style.display = 'none';
         if (!data.documents?.length) { document.getElementById('emptyState').style.display = 'block'; return; }
-        if (data.usage) document.getElementById('usageText').textContent = `${t('dash.usage')}: ${data.usage.count} / ${data.usage.limit >= 1e6 ? '\u221e' : data.usage.limit}`;
-        // Plan badge with manage link
+        if (data.usage) {
+          const usageEl = document.getElementById('usageText');
+          const plan = data.plan || Signy.getUser()?.plan || 'free';
+          const limit = data.usage.limit >= 1e6 ? '\u221e' : data.usage.limit;
+          if (plan === 'pro') {
+            usageEl.innerHTML = `${t('dash.usage')}: ${data.usage.count} / ${limit} &nbsp;<a href="#" id="managePlanLink" style="font-size:.8rem;color:var(--txm)">${t('price.manage')}</a>`;
+            usageEl.querySelector('#managePlanLink').addEventListener('click', async (e) => {
+              e.preventDefault();
+              try { const r = await api('/stripe/portal',{method:'POST'}); if(r.url) location.href = r.url; } catch(err) { toast(err.message,'error'); }
+            });
+          } else {
+            usageEl.innerHTML = `${t('dash.usage')}: ${data.usage.count} / ${limit} &nbsp;<a href="/pricing.html" style="font-size:.8rem;color:var(--ac)">${t('dash.upgrade')}</a>`;
+          }
+        }
+        // Plan badge (inline with title)
         const badge = document.getElementById('planBadge');
         const plan = data.plan || Signy.getUser()?.plan || 'free';
         if (plan === 'pro') {
-          badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:100px;background:rgba(0,224,160,.12);color:var(--ac)">PRO</span> <a href="#" id="managePlanLink" style="font-size:.75rem;color:var(--txm)">${t('price.manage')}</a>`;
-          badge.style.display = 'flex';
-          badge.querySelector('#managePlanLink').addEventListener('click', async (e) => {
-            e.preventDefault();
-            try { const r = await api('/stripe/portal',{method:'POST'}); if(r.url) location.href = r.url; } catch(err) { toast(err.message,'error'); }
-          });
+          badge.innerHTML = `<span style="font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:100px;background:rgba(0,224,160,.15);color:var(--ac)">PRO</span>`;
         } else {
-          badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:100px;background:rgba(113,113,122,.12);color:var(--txm)">FREE</span> <a href="/pricing.html" style="font-size:.75rem;color:var(--ac)">${t('dash.upgrade')}</a>`;
-          badge.style.display = 'flex';
+          badge.innerHTML = `<span style="font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:100px;background:rgba(113,113,122,.12);color:var(--txm)">FREE</span>`;
         }
+        badge.style.display = 'inline-flex';
         // If server reports different plan than JWT, silently refresh token
         if (data.plan && Signy.getUser()?.plan !== data.plan) {
           try { const r = await api('/auth/refresh',{method:'POST'}); if(r.sessionToken) Signy.setToken(r.sessionToken); } catch {}

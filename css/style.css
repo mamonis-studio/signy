@@ -16,9 +16,19 @@
   --tr:.2s ease;--tr-s:.4s cubic-bezier(.4,0,.2,1);
 }
 
+/* Light theme */
+[data-theme="light"]{
+  --bg:#ffffff;--bg-s:#f8f9fa;--bg-e:#f0f1f3;--bg-h:#e8e9eb;
+  --tx:#111113;--tx2:#52525b;--txm:#71717a;
+  --ac:#00b882;--ac-d:#009e70;--ac-g:rgba(0,184,130,.12);--ac-s:rgba(0,184,130,.05);
+  --bd:#e4e4e7;--bd-l:#d4d4d8;
+  --sh-s:0 1px 3px rgba(0,0,0,.06);--sh-m:0 4px 16px rgba(0,0,0,.08);--sh-l:0 8px 40px rgba(0,0,0,.1);
+}
+
 html{font-size:16px;scroll-behavior:smooth}
 body{font-family:var(--font-sans);background:var(--bg);color:var(--tx);line-height:1.65;min-height:100vh;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;opacity:.03;pointer-events:none;z-index:9999;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-repeat:repeat;background-size:256px 256px}
+[data-theme="light"] body::before{display:none}
 
 h1,h2,h3,h4{font-family:var(--font-head);font-weight:700;letter-spacing:-.02em;line-height:1.2}
 h1{font-size:2.5rem}h2{font-size:1.75rem}h3{font-size:1.2rem}
@@ -273,3 +283,17 @@ code,.mono{font-family:var(--font-mono)}
   .footer{padding:32px 16px}
   .footer__links{flex-wrap:wrap;gap:12px}
 }
+
+/* Light mode overrides */
+[data-theme="light"] .header{background:rgba(255,255,255,.9)}
+[data-theme="light"] .hero::before{background:radial-gradient(circle,rgba(0,184,130,.06) 0%,transparent 65%)}
+[data-theme="light"] .hero::after{background:radial-gradient(ellipse,rgba(0,184,130,.03) 0%,transparent 70%)}
+[data-theme="light"] ::selection{background:var(--ac);color:#fff}
+[data-theme="light"] .btn--primary{color:#fff}
+[data-theme="light"] .btn--primary:hover{box-shadow:0 0 24px rgba(0,184,130,.2),0 0 60px rgba(0,184,130,.08)}
+[data-theme="light"] .pdf-editor__canvas-wrap{background:#e8e8e8}
+
+/* Theme toggle button */
+.theme-toggle{background:none;border:1px solid var(--bd);border-radius:var(--r-s);padding:4px 8px;cursor:pointer;color:var(--txm);transition:all var(--tr);display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px}
+.theme-toggle:hover{color:var(--tx);border-color:var(--bd-l)}
+.theme-toggle svg{width:16px;height:16px}

@@ -25,7 +25,7 @@
     <p class="complete__desc" data-i18n="complete.desc"></p>
     <div class="complete__actions">
       <a href="#" class="btn btn--primary" id="dlBtn"></a>
-      <a href="/" class="btn btn--secondary" id="backBtn" style="display:none" data-i18n="complete.back"></a>
+      <a href="/" class="btn btn--secondary" data-i18n="complete.back"></a>
     </div>
   </div></section></main>
 
@@ -35,13 +35,14 @@
       <a href="https://mamonis.studio/privacy_policy" data-i18n="footer.priv"></a>
       <a href="https://mamonis.studio/terms_of_use" data-i18n="footer.terms"></a>
       <a href="https://mamonis.studio/tokushoho" data-i18n="footer.law"></a>
+      <a href="/legal/e-books-act.html" data-i18n="footer.ebooks"></a>
     </div>
   </footer>
 
   <script src="/js/app.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const {I, Logo, t, isLoggedIn} = Signy;
+    const {I, Logo, t} = Signy;
     document.title = t('meta.title.complete');
     document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
     document.getElementById('cIcon').innerHTML = I.checkCircle;
@@ -50,8 +51,6 @@
     const p = new URLSearchParams(location.search);
     const id = p.get('id'), tk = p.get('token');
     if (id && tk) document.getElementById('dlBtn').href = `/api/documents/${id}/download?token=${tk}`;
-    // Only show dashboard button if user is logged in
-    if (isLoggedIn()) document.getElementById('backBtn').style.display = '';
   });
   </script>
 </body>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>電子帳簿保存法への対応 | Signy</title>
+  <meta name="description" content="Signyの電子帳簿保存法への対応状況と、ご利用にあたってのガイドをご案内します。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#00e0a0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%2309090b' stroke='%2300e0a0' stroke-width='2'/><path d='M10 20C10 20 12 22 16 22C20 22 22 20 22 20' stroke='%2300e0a0' stroke-width='2' stroke-linecap='round'/></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .legal-content { max-width:720px; margin:0 auto; padding:60px 24px 80px; }
+    .legal-content h1 { font-size:1.75rem; margin-bottom:8px; }
+    .legal-content h2 { font-size:1.15rem; margin-top:40px; margin-bottom:12px; color:var(--ac); }
+    .legal-content h3 { font-size:.95rem; margin-top:24px; margin-bottom:8px; }
+    .legal-content p, .legal-content li { font-size:.9rem; color:var(--tx2); line-height:1.8; margin-bottom:12px; }
+    .legal-content ul { padding-left:20px; margin-bottom:16px; }
+    .legal-content li { margin-bottom:6px; }
+    .legal-content a { color:var(--ac); }
+    .legal-content .info-box { background:var(--bg-s); border:1px solid var(--bd); border-radius:8px; padding:20px; margin:20px 0; }
+    .legal-content .info-box--accent { border-left:3px solid var(--ac); }
+    .legal-content .check-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:.85rem; }
+    .legal-content .check-table th, .legal-content .check-table td { padding:10px 14px; border-bottom:1px solid var(--bd); text-align:left; }
+    .legal-content .check-table th { color:var(--txm); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
+    .legal-content .status-ok { color:var(--ac); font-weight:600; }
+    .legal-content .status-partial { color:var(--warn); font-weight:600; }
+  </style>
+</head>
+<body>
+  <header class="header"><div class="header__inner">
+    <a href="/" class="header__logo" id="logo"></a>
+    <nav class="header__nav">
+      <a href="/pricing.html" class="header__link" data-i18n="nav.pricing"></a>
+      <a href="/" class="header__link">Dashboard</a>
+    </nav>
+  </div></header>
+
+  <main class="legal-content">
+    <p style="font-size:.8rem;color:var(--txm);margin-bottom:4px">Legal</p>
+    <h1>電子帳簿保存法への対応</h1>
+    <p style="color:var(--txm);font-size:.85rem">最終更新: 2026年4月</p>
+
+    <h2>Signyと電子帳簿保存法の関係</h2>
+    <p>Signyを通じて締結された電子契約は、電子帳簿保存法（電帳法）における「電子取引」に該当します。2024年1月より、電子取引で授受した書類の電子データ保存が全ての事業者に義務化されています。</p>
+    <p>本ページでは、Signyの電帳法への対応状況と、お客さまが遵守すべき事項についてご案内します。</p>
+
+    <div class="info-box info-box--accent">
+      <p style="margin-bottom:0"><strong>ポイント:</strong> Signyは「訂正削除ができないシステム」として設計されており、電帳法の真実性の確保に関する要件（施行規則第4条第1項第3号）に対応しています。</p>
+    </div>
+
+    <h2>対応状況</h2>
+
+    <h3>真実性の確保</h3>
+    <p>電帳法では、電子取引データが改ざんされていないことを証明するために、以下のいずれかの措置を求めています。Signyは方法3に該当します。</p>
+
+    <table class="check-table">
+      <thead><tr><th>方法</th><th>内容</th><th>Signyの対応</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>タイムスタンプ付与後の授受</td><td style="color:var(--txm)">--</td></tr>
+        <tr><td>2</td><td>受信後にタイムスタンプ付与</td><td style="color:var(--txm)">--</td></tr>
+        <tr><td>3</td><td>訂正削除の記録が残る/できないシステム</td><td class="status-ok">対応済み</td></tr>
+        <tr><td>4</td><td>事務処理規程の備付け</td><td class="status-ok">テンプレート提供</td></tr>
+      </tbody>
+    </table>
+
+    <p><strong>Signyが「訂正削除ができないシステム」である理由:</strong></p>
+    <ul>
+      <li>署名済みPDFはクラウドインフラストラクチャ上に保存され、お客さまの操作により訂正または削除することはできません</li>
+      <li>全ての操作（作成・閲覧・署名・リマインダー・取消等）の監査証跡が自動記録されます（タイムスタンプ・IPアドレス・User-Agent）</li>
+      <li>監査証跡は署名済みPDFに自動付加され、一体として保存されます</li>
+      <li>利用規約において、正当な理由なくデータの訂正・削除を行わない旨を明記しています</li>
+    </ul>
+
+    <h3>可視性の確保</h3>
+
+    <table class="check-table">
+      <thead><tr><th>要件</th><th>内容</th><th>Signyの対応</th></tr></thead>
+      <tbody>
+        <tr><td>表示</td><td>ディスプレイ等で整然と表示</td><td class="status-ok">対応済み</td></tr>
+        <tr><td>提出</td><td>ダウンロードの求めに応じる</td><td class="status-ok">対応済み</td></tr>
+        <tr><td>検索</td><td>日付・金額・取引先で検索</td><td class="status-ok">対応済み</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:.8rem;color:var(--txm)">* 契約金額は送信時に任意で入力できます。金額のない契約（NDA等）は空欄のままで問題ありません。基準期間の売上高が5,000万円以下の事業者は、税務調査時にデータのダウンロードに応じることができる場合、検索機能の一部要件が免除されます（令和5年度税制改正）。</p>
+
+    <h2>お客さまにお願いしたいこと</h2>
+
+    <h3>PROプランをご利用の場合</h3>
+    <p>PROプランでは署名済みPDFが無期限で保存されます。Signyのシステム上の対応（訂正削除不可 + 監査証跡 + 利用規約）により、真実性の確保の要件を満たしています。追加の対応は原則不要です。</p>
+
+    <h3>FREEプランをご利用の場合</h3>
+    <p>FREEプランでも署名済みPDFは7年間保存されます。署名リンクの有効期限は30日間です。電帳法の保存要件を満たしていますが、月5件の送信制限があります。</p>
+
+    <h3>事務処理規程について（任意）</h3>
+    <p>Signyは「訂正削除ができないシステム」に該当するため、事務処理規程の作成は必須ではありません。ただし、安全策として事務処理規程を備え付けておくことをお勧めします。</p>
+    <p>国税庁が事務処理規程のテンプレート（Word形式）を公開しています:</p>
+    <ul>
+      <li><a href="https://www.nta.go.jp/law/joho-zeikaishaku/sonota/jirei/0021006-031.htm" target="_blank" rel="noopener">国税庁 参考資料（各種規程等のサンプル）</a></li>
+    </ul>
+    <p>テンプレートの「電子取引の範囲」欄に「Signyによる電子契約の締結」を追記し、管理責任者名等をご自身の情報に書き換えるだけで作成できます。</p>
+
+    <h2>保存期間</h2>
+    <table class="check-table">
+      <thead><tr><th>プラン</th><th>Signy上の保存期間</th><th>電帳法の要件</th></tr></thead>
+      <tbody>
+        <tr><td>FREE</td><td>7年間</td><td class="status-ok">要件を満たしています</td></tr>
+        <tr><td>PRO</td><td>無期限</td><td class="status-ok">要件を満たしています</td></tr>
+      </tbody>
+    </table>
+
+    <h2>免責事項</h2>
+    <p style="font-size:.8rem;color:var(--txm)">本ページの内容は、電子帳簿保存法に関する一般的な情報提供を目的としたものであり、法的助言を構成するものではありません。電帳法への対応に関する具体的な判断については、所轄の税務署または顧問税理士にご相談ください。当社は本ページの記載内容の正確性について最善を尽くしておりますが、法令の改正等により内容が変更される場合があります。</p>
+
+    <div style="margin-top:48px;padding-top:24px;border-top:1px solid var(--bd);display:flex;gap:20px;flex-wrap:wrap">
+      <a href="https://mamonis.studio/terms_of_use" style="font-size:.8rem;color:var(--txm)">利用規約</a>
+      <a href="https://mamonis.studio/privacy_policy" style="font-size:.8rem;color:var(--txm)">プライバシーポリシー</a>
+      <a href="https://mamonis.studio/tokushoho" style="font-size:.8rem;color:var(--txm)">特定商取引法に基づく表記</a>
+      <a href="/" style="font-size:.8rem;color:var(--txm)">Signyトップ</a>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const {Logo} = Signy;
+    document.getElementById('logo').innerHTML = `${Logo}<span class="header__logo-text">Signy</span>`;
+  });
+  </script>
+</body>
+</html>

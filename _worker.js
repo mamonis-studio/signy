@@ -58,7 +58,8 @@ const SEC=e=>{if(!e.JWT_SECRET)throw new Error('JWT_SECRET not configured');retu
 const APP=e=>e.APP_URL||'https://signy.mamonis.studio';
 const LIMITS={free:5,pro:1e8};
 const SIZES={free:10e6,pro:50e6};
-const EXPIRY={free:14,pro:3650};
+const EXPIRY={free:30,pro:365}; // Signing link expiry (days)
+const STORAGE_DAYS=2555; // 7 years — 電帳法 compliance, all plans
 const MK=()=>{const d=new Date(Date.now()+9*3600000);return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`};
 
 /* == Base64 helpers (UTF-8 safe) == */
@@ -180,10 +181,12 @@ async function docList(req,env,C){
   for(const id of ids.slice(-50).reverse()){
     const d=await env.SIGNY_KV.get(`doc:${id}`,'json');if(!d)continue;
     if(d.status==='pending'&&new Date(d.expiresAt)<new Date()){d.status='expired';await env.SIGNY_KV.put(`doc:${id}`,JSON.stringify(d))}
-    docs.push({id:d.id,title:d.title,status:d.status,signers:d.signers?.map(s=>({email:s.email,status:s.status,order:s.order})),signerEmail:d.signerEmail,createdAt:d.createdAt,signedAt:d.signedAt,hasSignedPdf:!!(d.signedPdfKey||d.latestPdfKey)});
+    docs.push({id:d.id,title:d.title,status:d.status,amount:d.amount||null,signers:d.signers?.map(s=>({email:s.email,status:s.status,order:s.order})),signerEmail:d.signerEmail,createdAt:d.createdAt,signedAt:d.signedAt,hasSignedPdf:!!(d.signedPdfKey||d.latestPdfKey)});
   }
   const mk=MK(),usage=await env.SIGNY_KV.get(`usage:${u.userId}:${mk}`,'json')||{count:0};
-  return J({documents:docs,usage:{count:usage.count,limit:LIMITS[u.plan]||5}},200,C);
+  // Read plan from KV (JWT may be stale after Stripe webhook updates plan)
+  const currentPlan=(await env.SIGNY_KV.get(`user:${u.userId}`,'json'))?.plan||'free';
+  return J({documents:docs,usage:{count:usage.count,limit:LIMITS[currentPlan]||5},plan:currentPlan},200,C);
 }
 
 async function docUpload(req,env,C){
@@ -193,7 +196,9 @@ async function docUpload(req,env,C){
   if(usage.count>=(LIMITS[plan]||5))return J({error:'Monthly limit reached'},403,C);
   const fd=await req.formData();
   const pdf=fd.get('pdf'),title=clamp(fd.get('title')||'Untitled',200),message=clamp(fd.get('message')||'',2000);
-  const customSubject=clamp(fd.get('customSubject')||'',100);
+  const customSubject=clamp((fd.get('customSubject')||'').replace(/[\r\n]/g,''),100);
+  const rawAmount=fd.get('amount');
+  const amount=rawAmount?Math.max(0,parseInt(rawAmount))||null:null;
   if(!pdf||typeof pdf==='string')return J({error:'Missing PDF file'},400,C);
   if(!(await validatePdf(pdf)))return J({error:'Invalid file: PDF required'},400,C);
   let signFields=[];try{signFields=sanitizeFields(JSON.parse(fd.get('signFields')||'[]'))}catch{}
@@ -209,7 +214,7 @@ async function docUpload(req,env,C){
   await env.SIGNY_DOCUMENTS.put(pdfKey,pdf.stream(),{httpMetadata:{contentType:'application/pdf'}});
   const now=new Date(),expiryDays=EXPIRY[plan]||EXPIRY.free;
   const signersData=signers.map((s,i)=>({email:s.email,order:s.order||(i+1),signToken:uid(),status:'pending',signedAt:null,remindersSent:0,lastReminderAt:null}));
-  const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:signers[0]?.email,signers:signersData,message,customSubject:customSubject||null,signFields,pdfKey,signedPdfKey:null,createdAt:now.toISOString(),signedAt:null,expiresAt:new Date(Date.now()+expiryDays*864e5).toISOString(),workflowEnabled:signers.length>1};
+  const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:signers[0]?.email,signers:signersData,message,customSubject:customSubject||null,amount,signFields,pdfKey,signedPdfKey:null,createdAt:now.toISOString(),signedAt:null,expiresAt:new Date(Date.now()+expiryDays*864e5).toISOString(),workflowEnabled:signers.length>1};
   await env.SIGNY_KV.put(`doc:${docId}`,JSON.stringify(doc));
   const uDocs=await env.SIGNY_KV.get(`user-docs:${u.userId}`,'json')||[];uDocs.push(docId);
   await env.SIGNY_KV.put(`user-docs:${u.userId}`,JSON.stringify(uDocs));
@@ -241,7 +246,9 @@ async function docBulkSend(req,env,C){
   if(userData?.plan!=='pro')return J({error:'一括送信はPROプラン限定です'},403,C);
   const fd=await req.formData();
   const pdf=fd.get('pdf'),title=clamp(fd.get('title')||'Untitled',200),message=clamp(fd.get('message')||'',2000),csvText=fd.get('csv')||'';
-  const customSubject=clamp(fd.get('customSubject')||'',100);
+  const customSubject=clamp((fd.get('customSubject')||'').replace(/[\r\n]/g,''),100);
+  const rawAmountB=fd.get('amount');
+  const amountB=rawAmountB?Math.max(0,parseInt(rawAmountB))||null:null;
   let signFields=[];try{signFields=sanitizeFields(JSON.parse(fd.get('signFields')||'[]'))}catch{}
   if(!pdf||!csvText)return J({error:'Missing PDF or CSV'},400,C);
   if(csvText.length>1e6)return J({error:'CSV too large (max 1MB)'},400,C);
@@ -263,7 +270,7 @@ async function docBulkSend(req,env,C){
   for(const r of recipients){
     const docId=`doc_${uid()}`,signToken=uid(),pdfKey=`docs/${docId}/original.pdf`;
     await env.SIGNY_DOCUMENTS.put(pdfKey,pdfBuf,{httpMetadata:{contentType:'application/pdf'}});
-    const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:r.email,signers:[{email:r.email,order:1,signToken,status:'pending',signedAt:null,remindersSent:0,lastReminderAt:null}],message,customSubject:customSubject||null,signFields,pdfKey,signedPdfKey:null,createdAt:new Date().toISOString(),signedAt:null,expiresAt:new Date(Date.now()+EXPIRY.pro*864e5).toISOString(),workflowEnabled:false,batchId};
+    const doc={id:docId,ownerId:u.userId,ownerEmail:u.email,title,status:'pending',signerEmail:r.email,signers:[{email:r.email,order:1,signToken,status:'pending',signedAt:null,remindersSent:0,lastReminderAt:null}],message,customSubject:customSubject||null,amount:amountB,signFields,pdfKey,signedPdfKey:null,createdAt:new Date().toISOString(),signedAt:null,expiresAt:new Date(Date.now()+EXPIRY.pro*864e5).toISOString(),workflowEnabled:false,batchId};
     await env.SIGNY_KV.put(`doc:${docId}`,JSON.stringify(doc));
     uDocs.push(docId);
     await env.SIGNY_KV.put(`pending:${docId}`,'1',{expirationTtl:EXPIRY.pro*86400+86400});
@@ -308,6 +315,7 @@ async function docSign(docId,req,env,C){
   const fd=await req.formData();const token=fd.get('token'),signedPdfBlob=fd.get('signedPdf');
   const doc=await env.SIGNY_KV.get(`doc:${docId}`,'json');
   if(!doc)return J({error:'Not found'},404,C);
+  if(doc.status==='cancelled')return J({error:'Cancelled'},410,C);
   if(new Date(doc.expiresAt)<new Date())return J({error:'Expired'},410,C);
   const signerIdx=doc.signers?.findIndex(s=>s.signToken===token);
   if(signerIdx===undefined||signerIdx===-1)return J({error:'Invalid token'},403,C);
@@ -448,6 +456,7 @@ async function docStatus(docId,env,C){
 async function docPdf(docId,url,env,C){
   const token=url.searchParams.get('token');
   const doc=await env.SIGNY_KV.get(`doc:${docId}`,'json');if(!doc)return J({error:'Not found'},404,C);
+  if(doc.status==='cancelled')return J({error:'Cancelled'},410,C);
   if(!doc.signers?.some(s=>s.signToken===token))return J({error:'Unauthorized'},403,C);
   // For workflow: serve the latest signed version so next signer sees previous signatures
   const pdfKey=doc.latestPdfKey||doc.pdfKey;
@@ -459,8 +468,7 @@ async function docDl(docId,url,env,C){
   const doc=await env.SIGNY_KV.get(`doc:${docId}`,'json');if(!doc)return J({error:'Not found'},404,C);
   if(!doc.signers?.some(s=>s.signToken===token))return J({error:'Unauthorized'},403,C);
   const ownerData=await env.SIGNY_KV.get(`user:${doc.ownerId}`,'json');
-  const expiryDays=EXPIRY[ownerData?.plan||'free'];
-  if((Date.now()-new Date(doc.createdAt).getTime())/864e5>expiryDays)return J({error:'Download expired. Upgrade to PRO.'},410,C);
+  if((Date.now()-new Date(doc.createdAt).getTime())/864e5>STORAGE_DAYS)return J({error:'Storage period expired (7 years).'},410,C);
   const obj=await env.SIGNY_DOCUMENTS.get(doc.signedPdfKey||doc.pdfKey);if(!obj)return J({error:'Not found'},404,C);
   return new Response(obj.body,{headers:{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${encodeURIComponent(doc.title)}_signed.pdf"`,'X-Content-Type-Options':'nosniff'}});
 }

@@ -180,6 +180,7 @@
       <a href="https://mamonis.studio/privacy_policy" data-i18n="footer.priv"></a>
       <a href="https://mamonis.studio/terms_of_use" data-i18n="footer.terms"></a>
       <a href="https://mamonis.studio/tokushoho" data-i18n="footer.law"></a>
+      <a href="/legal/e-books-act.html" data-i18n="footer.ebooks"></a>
     </div>
   </footer>
 
@@ -489,8 +490,7 @@
     ag.addEventListener('change',chk);
     function chk(){
       if(!docData?.signFields){document.getElementById('signBtn').disabled=true;return}
-      // Only check fields assigned to current signer (not readonly)
-      const signerFields=docData.signFields.filter(f=>!f._readonly);
+      const signerFields=docData.signFields.filter(f=>f.for!=='self');
       const allFilled=signerFields.every((f,i)=>{
         const v=fieldValues[docData.signFields.indexOf(f)];
         if(!v) return !f.required;

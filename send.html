@@ -226,6 +226,16 @@
             <input type="text" class="form-input" id="docTitle" data-i18n-attr="placeholder:send.doc.ph">
           </div>
 
+          <!-- Optional contract amount -->
+          <div class="form-group">
+            <label class="form-label" for="docAmount"><span data-i18n="send.amount"></span> <span style="font-size:.65rem;color:var(--txm);text-transform:none;letter-spacing:0;font-weight:400" data-i18n="send.amount.optional"></span></label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="color:var(--txm);font-size:.9rem">&#165;</span>
+              <input type="number" class="form-input" id="docAmount" min="0" step="1" data-i18n-attr="placeholder:send.amount.ph" style="flex:1">
+            </div>
+            <p style="font-size:.7rem;color:var(--txm);margin-top:4px" data-i18n="send.amount.hint"></p>
+          </div>
+
           <!-- Signers readonly summary -->
           <div class="form-group">
             <label class="form-label"><span data-i18n="send.signers"></span></label>
@@ -295,6 +305,7 @@
       <a href="https://mamonis.studio/privacy_policy" data-i18n="footer.priv"></a>
       <a href="https://mamonis.studio/terms_of_use" data-i18n="footer.terms"></a>
       <a href="https://mamonis.studio/tokushoho" data-i18n="footer.law"></a>
+      <a href="/legal/e-books-act.html" data-i18n="footer.ebooks"></a>
     </div>
   </footer>
 
@@ -367,7 +378,7 @@
 
     // Upload
     const zone=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
-    zone.addEventListener('click',(e)=>{ if(e.target===fi)return; fi.click(); });
+    zone.addEventListener('click',()=>fi.click());
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('upload-zone--active')});
     zone.addEventListener('dragleave',()=>zone.classList.remove('upload-zone--active'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('upload-zone--active');if(e.dataTransfer.files.length)handle(e.dataTransfer.files[0])});
@@ -540,6 +551,7 @@
             title: document.getElementById('docTitle')?.value || '',
             msg: document.getElementById('signerMsg')?.value || '',
             customSubject: document.getElementById('customSubject')?.value || '',
+            amount: document.getElementById('docAmount')?.value || '',
             signers: signersList,
             fields: fields.map(f => ({
               type: f.type, page: f.page,
@@ -570,6 +582,7 @@
     document.getElementById('docTitle').addEventListener('input', autoSave);
     document.getElementById('signerMsg').addEventListener('input', autoSave);
     document.getElementById('customSubject')?.addEventListener('input', autoSave);
+    document.getElementById('docAmount')?.addEventListener('input', autoSave);
 
     // ============================================================
     // BEFOREUNLOAD WARNING (only when there's unsaved work)
@@ -598,6 +611,10 @@
           if (draft.customSubject) {
             const cs = document.getElementById('customSubject');
             if (cs) cs.value = draft.customSubject;
+          }
+          if (draft.amount) {
+            const am = document.getElementById('docAmount');
+            if (am) am.value = draft.amount;
           }
           if (draft.signers?.length) {
             signersList = draft.signers;
@@ -1139,6 +1156,8 @@
         fd.append('title', title);
         fd.append('message', msg);
         fd.append('csv', csvText);
+        const amountBulk = document.getElementById('docAmount')?.value;
+        if (amountBulk) fd.append('amount', amountBulk);
         const customSubjectBulk = document.getElementById('customSubject')?.value?.trim();
         if (customSubjectBulk) fd.append('customSubject', customSubjectBulk);
         fd.append('signFields', JSON.stringify(fields.map(f => ({
@@ -1273,6 +1292,8 @@
       try{
         const fd=new FormData();fd.append('pdf',pdfFile);fd.append('title',title);
         fd.append('message',msg);
+        const amount = document.getElementById('docAmount')?.value;
+        if (amount) fd.append('amount', amount);
         const customSubject = document.getElementById('customSubject')?.value?.trim();
         if (customSubject) fd.append('customSubject', customSubject);
         fd.append('signers',JSON.stringify(signersList));

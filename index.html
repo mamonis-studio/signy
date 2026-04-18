@@ -70,7 +70,13 @@
     <div id="dashboard" style="display:none">
       <section class="dashboard"><div class="container">
         <div class="dashboard__header">
-          <div><h1 class="dashboard__title" data-i18n="dash.title"></h1><p class="text-muted mt-8" id="usageText"></p></div>
+          <div>
+            <h1 class="dashboard__title" data-i18n="dash.title"></h1>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap">
+              <p class="text-muted" id="usageText"></p>
+              <span id="planBadge" style="display:none"></span>
+            </div>
+          </div>
           <a href="/send.html" class="btn btn--primary" id="newBtn"></a>
         </div>
         <!-- Search & Filter -->
@@ -108,61 +114,13 @@
     </div>
   </main>
 
- <section class="signy-discover" aria-label="Signyの活用方法">
-        <div class="container">
-          <h2>Signyを使い切る</h2>
-          <p class="discover-lede">
-            契約書の種類から探すか、他の電子署名サービスとの違いを確認するか。
-          </p>
-
-          <div class="discover-grid">
-            <div class="discover-col">
-              <h3>契約書の種類から始める</h3>
-              <ul>
-                <li><a href="/use-case/gyoumu-itaku-keiyaku">業務委託契約書を電子署名で</a></li>
-                <li><a href="/use-case/nda-hi-mitsu-hoji-keiyaku">秘密保持契約書(NDA)を電子署名で</a></li>
-                <li><a href="/use-case/freelance-keiyaku">フリーランス契約(新法対応)を電子署名で</a></li>
-                <li><a href="/use-case/fudosan-chintai-keiyaku">不動産賃貸借契約書を電子署名で</a></li>
-                <li><a href="/use-case/designer-keiyaku">デザイナー業務委託契約書を電子署名で</a></li>
-              </ul>
-              <a href="/use-case/" class="discover-more">ユースケース一覧 →</a>
-            </div>
-
-            <div class="discover-col">
-              <h3>他のサービスと比較する</h3>
-              <ul>
-                <li><a href="/compare/vs-cloudsign">Signy vs クラウドサイン</a></li>
-                <li><a href="/compare/vs-gmosign">Signy vs GMOサイン</a></li>
-                <li><a href="/compare/vs-freeesign">Signy vs freeeサイン</a></li>
-                <li><a href="/compare/vs-docusign">Signy vs DocuSign</a></li>
-                <li><a href="/compare/vs-adobesign">Signy vs Adobe Sign</a></li>
-              </ul>
-              <a href="/compare/" class="discover-more">電子署名比較一覧 →</a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <style>
-        .signy-discover { padding: 64px 0; border-top: 1px solid #e5e5e0; background: #fafaf7; }
-        .signy-discover h2 { font-family: 'Noto Serif JP', serif; font-size: 28px; font-weight: 600; margin-bottom: 12px; }
-        .discover-lede { color: #666; font-size: 15px; margin-bottom: 32px; }
-        .discover-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 40px; }
-        .discover-col h3 { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: #666; text-transform: uppercase; margin-bottom: 16px; }
-        .discover-col ul { list-style: none; padding: 0; margin: 0 0 16px; }
-        .discover-col li { border-bottom: 1px dotted #e5e5e0; }
-        .discover-col li:last-child { border-bottom: none; }
-        .discover-col li a { display: block; padding: 10px 0; color: #111; text-decoration: none; font-size: 15px; line-height: 1.5; }
-        .discover-col li a:hover { color: #666; }
-        .discover-more { display: inline-block; margin-top: 8px; color: #111; font-family: 'JetBrains Mono', monospace; font-size: 13px; text-decoration: none; border-bottom: 1px solid #111; padding-bottom: 2px; }
-        .discover-more:hover { border-bottom-color: #666; color: #666; }
-      </style>
   <footer class="footer">
     <p class="footer__text" data-i18n="footer"></p>
     <div class="footer__links">
       <a href="https://mamonis.studio/privacy_policy" data-i18n="footer.priv"></a>
       <a href="https://mamonis.studio/terms_of_use" data-i18n="footer.terms"></a>
       <a href="https://mamonis.studio/tokushoho" data-i18n="footer.law"></a>
+      <a href="/legal/e-books-act.html" data-i18n="footer.ebooks"></a>
     </div>
   </footer>
 
@@ -233,9 +191,22 @@
       loadDashboard();
       (async()=>{
         if (new URLSearchParams(location.search).get('checkout') === 'success') {
-          try{const r=await api('/auth/refresh',{method:'POST'});if(r.sessionToken)Signy.setToken(r.sessionToken)}catch{}
+          // Retry refresh: Stripe webhook may not have arrived yet
+          let refreshed = false;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+            try {
+              const r = await api('/auth/refresh', {method:'POST'});
+              if (r.sessionToken && r.user?.plan === 'pro') {
+                Signy.setToken(r.sessionToken);
+                refreshed = true;
+                break;
+              }
+            } catch {}
+          }
           toast(t('toast.pro.done'), 'success');
           history.replaceState(null, '', '/');
+          if (refreshed) location.reload();
         }
       })();
     }
@@ -250,6 +221,24 @@
         document.getElementById('loading').style.display = 'none';
         if (!data.documents?.length) { document.getElementById('emptyState').style.display = 'block'; return; }
         if (data.usage) document.getElementById('usageText').textContent = `${t('dash.usage')}: ${data.usage.count} / ${data.usage.limit >= 1e6 ? '\u221e' : data.usage.limit}`;
+        // Plan badge with manage link
+        const badge = document.getElementById('planBadge');
+        const plan = data.plan || Signy.getUser()?.plan || 'free';
+        if (plan === 'pro') {
+          badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:100px;background:rgba(0,224,160,.12);color:var(--ac)">PRO</span> <a href="#" id="managePlanLink" style="font-size:.75rem;color:var(--txm)">${t('price.manage')}</a>`;
+          badge.style.display = 'flex';
+          badge.querySelector('#managePlanLink').addEventListener('click', async (e) => {
+            e.preventDefault();
+            try { const r = await api('/stripe/portal',{method:'POST'}); if(r.url) location.href = r.url; } catch(err) { toast(err.message,'error'); }
+          });
+        } else {
+          badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:100px;background:rgba(113,113,122,.12);color:var(--txm)">FREE</span> <a href="/pricing.html" style="font-size:.75rem;color:var(--ac)">${t('dash.upgrade')}</a>`;
+          badge.style.display = 'flex';
+        }
+        // If server reports different plan than JWT, silently refresh token
+        if (data.plan && Signy.getUser()?.plan !== data.plan) {
+          try { const r = await api('/auth/refresh',{method:'POST'}); if(r.sessionToken) Signy.setToken(r.sessionToken); } catch {}
+        }
         allDocs=data.documents;
         document.getElementById('dashControls').style.display='flex';
         renderDocs();
@@ -276,13 +265,20 @@
       list.innerHTML='';
       const filtered=allDocs.filter(doc=>{
         if(currentFilter!=='all'&&doc.status!==currentFilter)return false;
-        if(query&&!doc.title.toLowerCase().includes(query))return false;
+        if(query){
+          // Search by title, signer emails, and amount
+          const titleMatch=doc.title.toLowerCase().includes(query);
+          const signerMatch=doc.signers?.some(s=>s.email.toLowerCase().includes(query));
+          const amountMatch=doc.amount&&String(doc.amount).includes(query);
+          if(!titleMatch&&!signerMatch&&!amountMatch)return false;
+        }
         return true;
       });
       if(!filtered.length){list.innerHTML=`<p class="text-center text-muted mt-32" style="font-size:.9rem">${query||currentFilter!=='all'?t('dash.no.match'):t('dash.no.docs')}</p>`;return}
       filtered.forEach(doc=>{
         const cls=doc.status==='signed'?'signed':doc.status==='expired'?'expired':doc.status==='cancelled'?'cancelled':'pending';
         const signers=doc.signers?.map(s=>`${esc(s.email)}(${t('st.'+s.status)})`).join(' / ')||esc(doc.signerEmail||'');
+        const amountStr=doc.amount?`\u00a5${Number(doc.amount).toLocaleString()}`:'';
         // Action buttons
         let actions='';
         if(doc.status==='pending'){
@@ -297,7 +293,7 @@
         list.insertAdjacentHTML('beforeend',`
           <div class="doc-item" style="grid-template-columns:minmax(0,1fr) auto auto auto auto">
             <div style="min-width:0">
-              <div class="doc-item__title">${esc(doc.title)}</div>
+              <div class="doc-item__title">${esc(doc.title)}${amountStr?` <span style="color:var(--txm);font-size:.8rem;font-weight:400">${amountStr}</span>`:''}</div>
               <div class="doc-item__signer">${signers}</div>
             </div>
             <span class="badge badge--${cls}">${t('st.'+doc.status)}</span>
